@@ -34,7 +34,7 @@
             <div>
                 <span class="bg-blue-600 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Phase 1: Payment Audit</span>
                 <h1 class="text-2xl font-bold mt-3">Reconciliation & Treasury Module</h1>
-                <p class="text-slate-400 text-sm mt-1">Manual entry with dynamic validation and multi-currency logic</p>
+                <p class="text-slate-400 text-sm mt-1">Independent routing for source, target, destination, and custody</p>
             </div>
             <div class="flex gap-3 w-full md:w-auto">
                 <button onclick="openModal()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30">
@@ -43,7 +43,7 @@
             </div>
         </header>
 
-        <!-- KPI Metric Cards (Simplified for view) -->
+        <!-- KPI Metric Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="glass-card p-5 rounded-2xl shadow-sm"><div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Collected (USD)</div><div class="text-3xl font-bold text-slate-800 mt-2" id="kpi-usd">$0.00</div></div>
             <div class="glass-card p-5 rounded-2xl shadow-sm"><div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Collected (VES)</div><div class="text-3xl font-bold text-slate-800 mt-2" id="kpi-ves">Bs 0.00</div></div>
@@ -57,11 +57,11 @@
                 <table class="w-full text-left text-sm whitespace-nowrap">
                     <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold border-b border-slate-200">
                         <tr>
-                            <th class="p-4 rounded-tl-lg">Ref. / Date</th>
+                            <th class="p-4 rounded-tl-lg">Date</th>
                             <th class="p-4">Client</th>
-                            <th class="p-4">Method / Details</th>
+                            <th class="p-4">Method & Route</th>
+                            <th class="p-4">Custodian</th>
                             <th class="p-4 text-right">Amount (USD)</th>
-                            <th class="p-4">Destination</th>
                             <th class="p-4 text-center rounded-tr-lg">Actions</th>
                         </tr>
                     </thead>
@@ -83,7 +83,7 @@
             
             <form id="paymentForm" onsubmit="addPayment(event)" class="p-6 space-y-5">
                 
-                <!-- General Info -->
+                <!-- General Info (Always Visible) -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Method</label>
@@ -92,6 +92,7 @@
                             <option value="Transferencia Nacional">Transferencia Nacional</option>
                             <option value="Zelle">Zelle</option>
                             <option value="Efectivo USD">Efectivo USD</option>
+                            <option value="Efectivo EUR">Efectivo EUR</option>
                             <option value="Binance USDT">Binance USDT</option>
                         </select>
                     </div>
@@ -101,13 +102,45 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Client Name</label>
+                        <input type="text" id="client" required placeholder="John Doe" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Custodian</label>
+                        <select id="custodian" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            <option value="Gabriel">Gabriel</option>
+                            <option value="Jefferson">Jefferson</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Zelle Destination (Specific) -->
+                <div id="zelleFields" class="hidden grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Destination Account</label>
+                        <select id="destination" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            <option value="UNFCU">UNFCU</option>
+                            <option value="Bank of America">Bank of America</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- VES Specific Fields (Dynamic) -->
                 <div id="vesFields" class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Target Bank</label>
-                            <select id="bank" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></select>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Source Bank</label>
+                            <select id="sourceBank" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></select>
                         </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Target Bank</label>
+                            <select id="targetBank" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-slate-600 mb-1">ID Document</label>
                             <div class="flex">
@@ -117,10 +150,9 @@
                                 <input type="text" id="docNumber" placeholder="12345678" class="w-full px-3 py-2.5 border border-slate-200 rounded-r-lg text-sm focus:outline-none focus:border-blue-500">
                             </div>
                         </div>
-                    </div>
 
-                    <div id="pagoMovilFields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
+                        <!-- Pago Movil Only -->
+                        <div id="pagoMovilFields">
                             <label class="block text-xs font-semibold text-slate-600 mb-1">Phone Number</label>
                             <div class="flex">
                                 <select id="phonePrefix" class="w-24 px-2 py-2.5 border border-slate-200 border-r-0 rounded-l-lg text-sm focus:outline-none focus:border-blue-500 bg-slate-50">
@@ -129,11 +161,13 @@
                                 <input type="text" id="phoneNumber" placeholder="1234567" maxlength="7" class="w-full px-3 py-2.5 border border-slate-200 rounded-r-lg text-sm focus:outline-none focus:border-blue-500 font-mono">
                             </div>
                         </div>
-                    </div>
 
-                    <div id="transferenciaFields" class="hidden">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Account Number (20 digits)</label>
-                        <input type="text" id="accountNumber" placeholder="01020000000000000000" maxlength="20" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono">
+                        <!-- Transferencia Only -->
+                        <div id="transferenciaFields" class="hidden">
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Account Number (20 digits)</label>
+                            <input type="text" id="accountNumber" placeholder="01020000000000000000" maxlength="20" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono">
+                            <p id="accountError" class="text-xs text-rose-500 mt-1 hidden"><i class="fa-solid fa-circle-exclamation"></i> Must start with Target Bank 4-digit code.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -159,9 +193,9 @@
                     </div>
                 </div>
 
-                <!-- Cash Specific Fields -->
+                <!-- Cash USD Specific Fields -->
                 <div id="cashFields" class="hidden bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 space-y-4">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Register Bills</label>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Register USD Bills</label>
                     <div class="flex gap-2">
                         <select id="billDenomination" class="w-32 px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
                             <option value="1">$1 Bill</option><option value="5">$5 Bill</option><option value="10">$10 Bill</option><option value="20">$20 Bill</option><option value="50">$50 Bill</option><option value="100">$100 Bill</option>
@@ -172,19 +206,20 @@
                     <div id="serialNumbersContainer" class="space-y-2 mt-3"></div>
                 </div>
 
-                <!-- Transaction Details -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Client Name</label>
-                        <input type="text" id="client" required placeholder="John Doe" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                <!-- Cash EUR Specific Fields -->
+                <div id="cashEurFields" class="hidden bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-4">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Register EUR Bills</label>
+                    <div class="flex gap-2">
+                        <select id="eurBillDenomination" class="w-32 px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500">
+                            <option value="5">€5 Bill</option><option value="10">€10 Bill</option><option value="20">€20 Bill</option><option value="50">€50 Bill</option><option value="100">€100 Bill</option><option value="200">€200 Bill</option><option value="500">€500 Bill</option>
+                        </select>
+                        <input type="number" id="eurBillQuantity" placeholder="Qty" min="1" value="1" class="w-24 px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-indigo-500">
+                        <button type="button" onclick="generateEurSerialInputs()" class="px-4 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">Add Bills</button>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Destination / Custodian</label>
-                        <!-- Options populated dynamically based on Method -->
-                        <select id="destination" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></select>
-                    </div>
+                    <div id="eurSerialNumbersContainer" class="space-y-2 mt-3"></div>
                 </div>
 
+                <!-- Shared References -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div id="referenceContainer">
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Reference Number</label>
@@ -208,7 +243,17 @@
                             <input type="number" step="0.01" id="rate" oninput="calculateUsd()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono" value="36.50">
                         </div>
                     </div>
-                    <div class="col-span-1">
+                    <div id="eurAmountContainer" class="col-span-2 hidden grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (EUR)</label>
+                            <input type="number" step="0.01" id="eur" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-700 font-bold font-mono" value="0" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">EUR/USD Rate</label>
+                            <input type="number" step="0.01" id="eurUsdRate" oninput="calculateEurToUsd()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono" value="1.10">
+                        </div>
+                    </div>
+                    <div class="col-span-1" id="usdAmountContainer">
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (USD)</label>
                         <input type="number" step="0.01" id="usd" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-700 font-bold font-mono" value="0">
                     </div>
@@ -229,17 +274,29 @@
             {"code": "0105", "name": "BANCO MERCANTIL"},
             {"code": "0108", "name": "BBVA PROVINCIAL"},
             {"code": "0114", "name": "BANCARIBE"},
+            {"code": "0115", "name": "BANCO EXTERIOR"},
             {"code": "0134", "name": "BANESCO"},
-            {"code": "0172", "name": "BANCAMIGA"}
-            // (Truncated for readability, assume full array here)
+            {"code": "0156", "name": "100% BANCO"},
+            {"code": "0163", "name": "BANCO DEL TESORO"},
+            {"code": "0172", "name": "BANCAMIGA"},
+            {"code": "0175", "name": "BANCO DIGITAL DE LOS TRABAJADORES"},
+            {"code": "0191", "name": "BANCO NACIONAL DE CREDITO"}
         ];
 
         let paymentRecords = [];
         let cashTotalUsd = 0;
+        let cashTotalEur = 0;
 
         document.addEventListener('DOMContentLoaded', () => {
-            const select = document.getElementById('bank');
-            banksData.forEach(b => select.innerHTML += `<option value="${b.code}">${b.code} - ${b.name}</option>`);
+            const sourceSelect = document.getElementById('sourceBank');
+            const targetSelect = document.getElementById('targetBank');
+            
+            banksData.forEach(b => {
+                const option = `<option value="${b.code}">${b.code} - ${b.name}</option>`;
+                sourceSelect.innerHTML += option;
+                targetSelect.innerHTML += option;
+            });
+            
             document.getElementById('date').valueAsDate = new Date();
             toggleMethodFields(); 
         });
@@ -248,26 +305,35 @@
             const method = document.getElementById('method').value;
             
             // Containers
+            const zelleFields = document.getElementById('zelleFields');
             const vesFields = document.getElementById('vesFields');
             const pagoMovilFields = document.getElementById('pagoMovilFields');
             const transfFields = document.getElementById('transferenciaFields');
             const binanceFields = document.getElementById('binanceFields');
             const cashFields = document.getElementById('cashFields');
+            const cashEurFields = document.getElementById('cashEurFields');
+            
             const vesAmountContainer = document.getElementById('vesAmountContainer');
+            const eurAmountContainer = document.getElementById('eurAmountContainer');
             const referenceContainer = document.getElementById('referenceContainer');
             const usdInput = document.getElementById('usd');
-            const destSelect = document.getElementById('destination');
 
-            // Hide all first
-            vesFields.classList.add('hidden'); pagoMovilFields.classList.add('hidden'); transfFields.classList.add('hidden');
-            binanceFields.classList.add('hidden'); cashFields.classList.add('hidden');
-            vesAmountContainer.classList.add('hidden'); referenceContainer.classList.add('hidden');
+            // Hide all specialized sections first
+            zelleFields.classList.add('hidden');
+            zelleFields.classList.remove('grid');
+            vesFields.classList.add('hidden'); 
+            pagoMovilFields.classList.add('hidden'); 
+            transfFields.classList.add('hidden');
+            binanceFields.classList.add('hidden'); 
+            cashFields.classList.add('hidden');
+            cashEurFields.classList.add('hidden');
+            vesAmountContainer.classList.add('hidden'); 
+            eurAmountContainer.classList.add('hidden');
+            referenceContainer.classList.add('hidden');
             
+            // Reset USD Input state
             usdInput.readOnly = false;
             usdInput.classList.remove('bg-slate-100');
-
-            // Clear dynamic destinations
-            destSelect.innerHTML = '';
 
             if (method === 'Pago Móvil' || method === 'Transferencia Nacional') {
                 vesFields.classList.remove('hidden');
@@ -278,33 +344,38 @@
                 
                 if (method === 'Pago Móvil') pagoMovilFields.classList.remove('hidden');
                 else transfFields.classList.remove('hidden');
-
-                // Load VES Destinations
-                const vesDestinations = ['Gabriel Banesco', 'Gabriel Banco de Venezuela', 'Jefferson Bancamiga', 'Jefferson Mercantil'];
-                vesDestinations.forEach(d => destSelect.innerHTML += `<option value="${d}">${d}</option>`);
                 
             } else if (method === 'Zelle') {
                 referenceContainer.classList.remove('hidden');
-                const zelleDestinations = ['UNFCU', 'Bank of America'];
-                zelleDestinations.forEach(d => destSelect.innerHTML += `<option value="${d}">${d}</option>`);
+                zelleFields.classList.remove('hidden');
+                zelleFields.classList.add('grid');
                 
             } else if (method === 'Efectivo USD') {
                 cashFields.classList.remove('hidden');
-                usdInput.readOnly = true; // Calculated from bills
+                usdInput.readOnly = true; 
                 usdInput.classList.add('bg-slate-100');
                 
-                const cashDestinations = ['Gabriel Cash', 'Jefferson Cash'];
-                cashDestinations.forEach(d => destSelect.innerHTML += `<option value="${d}">${d}</option>`);
+            } else if (method === 'Efectivo EUR') {
+                cashEurFields.classList.remove('hidden');
+                eurAmountContainer.classList.remove('hidden');
+                usdInput.readOnly = true; 
+                usdInput.classList.add('bg-slate-100');
                 
             } else if (method === 'Binance USDT') {
                 binanceFields.classList.remove('hidden');
-                
-                const binanceDestinations = ['Gabriel Binance', 'Jefferson Binance'];
-                binanceDestinations.forEach(d => destSelect.innerHTML += `<option value="${d}">${d}</option>`);
             }
         }
 
-        // Cash Serial Generator Logic
+        document.getElementById('accountNumber').addEventListener('input', function() {
+            const targetCode = document.getElementById('targetBank').value;
+            const errorElement = document.getElementById('accountError');
+            if(this.value.length >= 4 && !this.value.startsWith(targetCode)) {
+                errorElement.classList.remove('hidden');
+            } else {
+                errorElement.classList.add('hidden');
+            }
+        });
+
         function generateSerialInputs() {
             const denom = parseInt(document.getElementById('billDenomination').value);
             const qty = parseInt(document.getElementById('billQuantity').value);
@@ -319,7 +390,7 @@
                     </div><div class="grid grid-cols-2 gap-2">`;
                 
                 for(let i=1; i<=qty; i++) {
-                    htmlStr += `<input type="text" placeholder="Serial ${i}" required class="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:border-emerald-500 font-mono">`;
+                    htmlStr += `<input type="text" placeholder="Serial ${i}" required class="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:border-emerald-500 font-mono uppercase">`;
                 }
                 htmlStr += `</div></div>`;
                 container.innerHTML += htmlStr;
@@ -337,6 +408,47 @@
         function updateCashTotal(amount) {
             cashTotalUsd += amount;
             document.getElementById('usd').value = cashTotalUsd.toFixed(2);
+        }
+
+        function generateEurSerialInputs() {
+            const denom = parseInt(document.getElementById('eurBillDenomination').value);
+            const qty = parseInt(document.getElementById('eurBillQuantity').value);
+            const container = document.getElementById('eurSerialNumbersContainer');
+            
+            if(qty > 0) {
+                const batchId = Date.now();
+                let htmlStr = `<div class="p-3 bg-white border border-indigo-200 rounded-lg" id="eur-batch-${batchId}">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-slate-700">${qty} x €${denom} Bills (€${denom * qty})</span>
+                        <button type="button" onclick="removeEurBatch(${batchId}, ${denom * qty})" class="text-rose-500 text-xs hover:underline">Remove</button>
+                    </div><div class="grid grid-cols-2 gap-2">`;
+                
+                for(let i=1; i<=qty; i++) {
+                    htmlStr += `<input type="text" placeholder="Serial ${i}" required class="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:border-indigo-500 font-mono uppercase">`;
+                }
+                htmlStr += `</div></div>`;
+                container.innerHTML += htmlStr;
+                
+                updateEurCashTotal(denom * qty);
+                document.getElementById('eurBillQuantity').value = 1;
+            }
+        }
+
+        function removeEurBatch(batchId, amountToDeduct) {
+            document.getElementById(`eur-batch-${batchId}`).remove();
+            updateEurCashTotal(-amountToDeduct);
+        }
+
+        function updateEurCashTotal(amount) {
+            cashTotalEur += amount;
+            document.getElementById('eur').value = cashTotalEur.toFixed(2);
+            calculateEurToUsd();
+        }
+
+        function calculateEurToUsd() {
+            const eur = parseFloat(document.getElementById('eur').value) || 0;
+            const rate = parseFloat(document.getElementById('eurUsdRate').value) || 1;
+            document.getElementById('usd').value = (eur * rate).toFixed(2);
         }
 
         function calculateUsd() {
@@ -357,21 +469,47 @@
             document.getElementById('paymentModal').classList.add('hidden'); 
             document.getElementById('paymentForm').reset();
             document.getElementById('serialNumbersContainer').innerHTML = '';
+            document.getElementById('eurSerialNumbersContainer').innerHTML = '';
+            document.getElementById('accountError').classList.add('hidden');
             cashTotalUsd = 0;
+            cashTotalEur = 0;
             toggleMethodFields();
         }
 
         function addPayment(event) {
             event.preventDefault();
-            // Simplified validation & add record logic for demonstration
+            
+            const method = document.getElementById('method').value;
+            const custodian = document.getElementById('custodian').value;
+            let routeString = "";
+
+            if (method === 'Pago Móvil' || method === 'Transferencia Nacional') {
+                const source = document.getElementById('sourceBank').value;
+                const target = document.getElementById('targetBank').value;
+                routeString = `${source} ➔ ${target}`;
+            } else if (method === 'Zelle') {
+                const dest = document.getElementById('destination').value;
+                routeString = `➔ ${dest}`;
+            } else if (method === 'Binance USDT') {
+                const orderId = document.getElementById('binanceOrderId').value;
+                routeString = `Order: ${orderId}`;
+            } else if (method === 'Efectivo USD') {
+                routeString = `Hand delivery (USD)`;
+            } else if (method === 'Efectivo EUR') {
+                routeString = `Hand delivery (EUR)`;
+            }
+
             const newRecord = {
                 id: Date.now(),
                 date: document.getElementById('date').value,
                 client: document.getElementById('client').value,
-                method: document.getElementById('method').value,
+                method: method,
+                route: routeString,
+                custodian: custodian,
                 usd: parseFloat(document.getElementById('usd').value) || 0,
-                destination: document.getElementById('destination').value
+                ves: parseFloat(document.getElementById('ves').value) || 0
             };
+            
             paymentRecords.unshift(newRecord);
             renderTable();
             closeModal();
@@ -380,21 +518,34 @@
         function renderTable() {
             const tbody = document.getElementById('paymentTableBody');
             tbody.innerHTML = '';
-            let totalUsd = 0;
+            
+            let totalUsd = 0, totalVes = 0, gabrielUsd = 0, jeffersonUsd = 0;
+
             paymentRecords.forEach(p => {
                 totalUsd += p.usd;
+                totalVes += p.ves;
+                if(p.custodian === 'Gabriel') gabrielUsd += p.usd;
+                if(p.custodian === 'Jefferson') jeffersonUsd += p.usd;
+
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50 border-b border-slate-50">
-                        <td class="p-4 text-xs font-mono">${p.date}</td>
+                        <td class="p-4 text-xs font-mono text-slate-500">${p.date}</td>
                         <td class="p-4 font-semibold text-slate-700">${p.client}</td>
-                        <td class="p-4 text-sm">${p.method}</td>
+                        <td class="p-4">
+                            <div class="text-sm font-medium text-slate-800">${p.method}</div>
+                            <div class="text-xs text-slate-500 mt-0.5">${p.route}</div>
+                        </td>
+                        <td class="p-4"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold border border-blue-100">${p.custodian}</span></td>
                         <td class="p-4 text-right font-bold text-slate-900">$${p.usd.toFixed(2)}</td>
-                        <td class="p-4"><span class="bg-slate-100 px-2 py-1 rounded text-xs font-semibold">${p.destination}</span></td>
-                        <td class="p-4 text-center text-slate-400"><i class="fa-solid fa-ellipsis"></i></td>
+                        <td class="p-4 text-center text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-ellipsis"></i></td>
                     </tr>
                 `;
             });
-            document.getElementById('kpi-usd').innerText = `$${totalUsd.toFixed(2)}`;
+
+            document.getElementById('kpi-usd').innerText = `$${totalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('kpi-ves').innerText = `Bs ${totalVes.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('kpi-gabriel').innerText = `$${gabrielUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('kpi-jefferson').innerText = `$${jeffersonUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         }
     </script>
 </body>
