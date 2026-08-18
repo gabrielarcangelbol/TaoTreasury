@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment & Treasury Reconciliation</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f8fafc; }
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(10px); 
+            border: 1px solid #e2e8f0; 
+        }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="p-4 md:p-6 text-slate-800 antialiased">
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header Section -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 text-white p-6 rounded-2xl shadow-xl">
+            <div>
+                <span class="bg-blue-600 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Phase 1: Payment Audit</span>
+                <h1 class="text-2xl font-bold mt-3">Reconciliation & Treasury Module</h1>
+                <p class="text-slate-400 text-sm mt-1">Manual entry with dynamic validation and multi-currency calculation</p>
+            </div>
+            <div class="flex gap-3 w-full md:w-auto">
+                <button onclick="openModal()" class="w-full md:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30">
+                    <i class="fa-solid fa-plus"></i> Register New Payment
+                </button>
+            </div>
+        </header>
+
+        <!-- KPI Metric Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card p-5 rounded-2xl shadow-sm">
+                <div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Collected (USD)</div>
+                <div class="text-3xl font-bold text-slate-800 mt-2" id="kpi-usd">$0.00</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl shadow-sm">
+                <div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Collected (VES)</div>
+                <div class="text-3xl font-bold text-slate-800 mt-2" id="kpi-ves">Bs 0.00</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl shadow-sm">
+                <div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Gabriel Custody</div>
+                <div class="text-3xl font-bold text-slate-800 mt-2" id="kpi-gabriel">$0.00</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl shadow-sm">
+                <div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Jefferson Custody</div>
+                <div class="text-3xl font-bold text-slate-800 mt-2" id="kpi-jefferson">$0.00</div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <main class="glass-card rounded-2xl p-6 shadow-sm border border-slate-200">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-blue-600"></i> General Payment Ledger
+                </h2>
+                <div class="relative w-full md:w-72">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search reference, client, bank..." class="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500">
+                </div>
+            </div>
+
+            <div class="overflow-x-auto custom-scrollbar pb-2">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold border-b border-slate-200">
+                        <tr>
+                            <th class="p-4 rounded-tl-lg">Ref. / Date</th>
+                            <th class="p-4">Client / Origin</th>
+                            <th class="p-4">Method / Bank</th>
+                            <th class="p-4 text-right">Amount (VES)</th>
+                            <th class="p-4 text-right">Rate (Bs/$)</th>
+                            <th class="p-4 text-right">Amount (USD)</th>
+                            <th class="p-4">Custodian</th>
+                            <th class="p-4 text-center">Status</th>
+                            <th class="p-4 text-center rounded-tr-lg">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentTableBody" class="divide-y divide-slate-100">
+                        <!-- Rows injected via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Form -->
+    <div id="paymentModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 custom-scrollbar">
+            <div class="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-100 sticky top-0 z-10">
+                <h3 class="text-lg font-bold text-slate-800">Register New Payment</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-rose-500 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="paymentForm" onsubmit="addPayment(event)" class="p-6 space-y-5">
+                
+                <!-- General Info -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Method</label>
+                        <select id="method" onchange="toggleMethodFields()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            <option value="Pago Móvil">Pago Móvil</option>
+                            <option value="Transferencia Nacional">Transferencia Nacional</option>
+                            <option value="Zelle">Zelle</option>
+                            <option value="Efectivo USD">Efectivo USD</option>
+                            <option value="Binance USDT">Binance USDT</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Date</label>
+                        <input type="date" id="date" required class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- VES Specific Fields (Dynamic) -->
+                <div id="vesFields" class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Target Bank</label>
+                            <select id="bank" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                                <!-- Populated by JS -->
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">ID Document</label>
+                            <div class="flex">
+                                <select id="docType" class="w-20 px-2 py-2.5 border border-slate-200 border-r-0 rounded-l-lg text-sm focus:outline-none focus:border-blue-500 bg-slate-50">
+                                    <option value="V">V</option><option value="E">E</option><option value="J">J</option><option value="P">P</option><option value="G">G</option>
+                                </select>
+                                <input type="text" id="docNumber" placeholder="12345678" class="w-full px-3 py-2.5 border border-slate-200 rounded-r-lg text-sm focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pago Movil Only -->
+                    <div id="pagoMovilFields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Phone Number</label>
+                            <div class="flex">
+                                <select id="phonePrefix" class="w-24 px-2 py-2.5 border border-slate-200 border-r-0 rounded-l-lg text-sm focus:outline-none focus:border-blue-500 bg-slate-50">
+                                    <option value="0412">0412</option><option value="0414">0414</option><option value="0424">0424</option><option value="0416">0416</option><option value="0426">0426</option><option value="0422">0422</option>
+                                </select>
+                                <input type="text" id="phoneNumber" placeholder="1234567" maxlength="7" class="w-full px-3 py-2.5 border border-slate-200 rounded-r-lg text-sm focus:outline-none focus:border-blue-500 font-mono">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transferencia Only -->
+                    <div id="transferenciaFields" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Account Number (20 digits)</label>
+                        <input type="text" id="accountNumber" placeholder="01020000000000000000" maxlength="20" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono">
+                        <p id="accountError" class="text-xs text-rose-500 mt-1 hidden"><i class="fa-solid fa-circle-exclamation"></i> Account must start with the selected bank's 4-digit code.</p>
+                    </div>
+                </div>
+
+                <!-- Transaction Details -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Client Name</label>
+                        <input type="text" id="client" required placeholder="John Doe" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Reference Number</label>
+                        <input type="text" id="ref" required placeholder="123456" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono">
+                        <p id="refError" class="text-xs text-rose-500 mt-1 hidden"><i class="fa-solid fa-circle-exclamation"></i> Reference must be numeric (6-8 digits).</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Custodian / Destination</label>
+                        <select id="custodian" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            <option value="Gabriel UNFCU">Gabriel UNFCU</option>
+                            <option value="Gabriel Binance">Gabriel Binance</option>
+                            <option value="Gabriel Cash">Gabriel Cash</option>
+                            <option value="Jefferson Bancamiga">Jefferson Bancamiga</option>
+                            <option value="Jefferson Cash">Jefferson Cash</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Receipt Attachment (Optional)</label>
+                        <input type="file" id="receipt" accept="image/*,.pdf" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 pt-2 border-t border-slate-100">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (VES)</label>
+                        <input type="number" step="0.01" id="ves" oninput="calculateUsd()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Rate (Bs/$)</label>
+                        <input type="number" step="0.01" id="rate" oninput="calculateUsd()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono" value="36.50">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (USD)</label>
+                        <input type="number" step="0.01" id="usd" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-700 font-bold font-mono" readonly value="0">
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeModal()" class="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-sm transition-all shadow-blue-500/30">Save Record</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // Venezuelan Banks Data JSON Mapping
+        const banksData = [
+            {"code": "0102", "name": "BANCO DE VENEZUELA"},
+            {"code": "0104", "name": "BANCO VENEZOLANO DE CREDITO"},
+            {"code": "0105", "name": "BANCO MERCANTIL"},
+            {"code": "0108", "name": "BBVA PROVINCIAL"},
+            {"code": "0114", "name": "BANCARIBE"},
+            {"code": "0115", "name": "BANCO EXTERIOR"},
+            {"code": "0128", "name": "BANCO CARONI"},
+            {"code": "0134", "name": "BANESCO"},
+            {"code": "0137", "name": "BANCO SOFITASA"},
+            {"code": "0138", "name": "BANCO PLAZA"},
+            {"code": "0146", "name": "BANGENTE"},
+            {"code": "0151", "name": "BANCO FONDO COMUN"},
+            {"code": "0156", "name": "100% BANCO"},
+            {"code": "0157", "name": "DELSUR BANCO UNIVERSAL"},
+            {"code": "0163", "name": "BANCO DEL TESORO"},
+            {"code": "0168", "name": "BANCRECER"},
+            {"code": "0169", "name": "R4 BANCO MICROFINANCIERO C.A."},
+            {"code": "0171", "name": "BANCO ACTIVO"},
+            {"code": "0172", "name": "BANCAMIGA BANCO UNIVERSAL, C.A."},
+            {"code": "0173", "name": "BANCO INTERNACIONAL DE DESARROLLO"},
+            {"code": "0174", "name": "BANPLUS"},
+            {"code": "0175", "name": "BANCO DIGITAL DE LOS TRABAJADORES, BANCO UNIVERSAL"},
+            {"code": "0177", "name": "BANFANB"},
+            {"code": "0178", "name": "N58 BANCO DIGITAL BANCO MICROFINANCIERO S A"},
+            {"code": "0191", "name": "BANCO NACIONAL DE CREDITO"}
+        ];
+
+        let paymentRecords = [
+            { id: 1, ref: '06772801', date: '2024-09-30', client: 'Gustavo Rada', method: 'Pago Móvil', bank: '0172 - BANCAMIGA', ves: 500.00, rate: 36.50, usd: 13.70, custodian: 'Jefferson Bancamiga', status: 'Conciliado' }
+        ];
+
+        /**
+         * Initialize DOM setup
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            populateBankSelect();
+            document.getElementById('date').valueAsDate = new Date();
+            renderTable();
+        });
+
+        /**
+         * Populate the bank select options from the JSON array
+         */
+        function populateBankSelect() {
+            const select = document.getElementById('bank');
+            select.innerHTML = '';
+            banksData.forEach(bank => {
+                select.innerHTML += `<option value="${bank.code}">${bank.code} - ${bank.name}</option>`;
+            });
+        }
+
+        /**
+         * Toggles form visibility based on selected payment method
+         */
+        function toggleMethodFields() {
+            const method = document.getElementById('method').value;
+            const vesFields = document.getElementById('vesFields');
+            const pagoMovilFields = document.getElementById('pagoMovilFields');
+            const transferenciaFields = document.getElementById('transferenciaFields');
+
+            // Show/hide main VES block
+            if (method === 'Pago Móvil' || method === 'Transferencia Nacional') {
+                vesFields.classList.remove('hidden');
+                
+                if (method === 'Pago Móvil') {
+                    pagoMovilFields.classList.remove('hidden');
+                    transferenciaFields.classList.add('hidden');
+                } else {
+                    pagoMovilFields.classList.add('hidden');
+                    transferenciaFields.classList.remove('hidden');
+                }
+            } else {
+                vesFields.classList.add('hidden');
+            }
+        }
+
+        /**
+         * Validates the form inputs before adding payment
+         */
+        function validateForm() {
+            let isValid = true;
+            const method = document.getElementById('method').value;
+            const ref = document.getElementById('ref').value;
+            const refError = document.getElementById('refError');
+
+            // 1. Reference Validation: Numeric, 6-8 digits
+            const refRegex = /^[0-9]{6,8}$/;
+            if (!refRegex.test(ref)) {
+                refError.classList.remove('hidden');
+                isValid = false;
+            } else {
+                refError.classList.add('hidden');
+            }
+
+            // 2. Conditional Bank Validations
+            if (method === 'Transferencia Nacional') {
+                const bankCode = document.getElementById('bank').value;
+                const account = document.getElementById('accountNumber').value;
+                const accountError = document.getElementById('accountError');
+
+                // Validate 20 digits and starts with bank code
+                const accountRegex = /^[0-9]{20}$/;
+                if (!accountRegex.test(account) || !account.startsWith(bankCode)) {
+                    accountError.classList.remove('hidden');
+                    isValid = false;
+                } else {
+                    accountError.classList.add('hidden');
+                }
+            } else if (method === 'Pago Móvil') {
+                const phoneNum = document.getElementById('phoneNumber').value;
+                if (!/^[0-9]{7}$/.test(phoneNum)) {
+                    alert("Phone number must contain exactly 7 digits.");
+                    isValid = false;
+                }
+            }
+
+            return isValid;
+        }
+
+        function addPayment(event) {
+            event.preventDefault();
+            
+            if (!validateForm()) return;
+
+            const method = document.getElementById('method').value;
+            let bankDisplay = "N/A";
+            
+            if (method === 'Pago Móvil' || method === 'Transferencia Nacional') {
+                const bankCode = document.getElementById('bank').value;
+                const bankName = banksData.find(b => b.code === bankCode).name;
+                bankDisplay = `${bankCode} - ${bankName}`;
+            } else {
+                bankDisplay = method; 
+            }
+
+            const newPaymentRecord = {
+                id: Date.now(),
+                ref: document.getElementById('ref').value,
+                date: document.getElementById('date').value,
+                client: document.getElementById('client').value,
+                method: method,
+                bank: bankDisplay,
+                ves: parseFloat(document.getElementById('ves').value) || 0,
+                rate: parseFloat(document.getElementById('rate').value) || 1,
+                usd: parseFloat(document.getElementById('usd').value) || 0,
+                custodian: document.getElementById('custodian').value,
+                status: 'Pendiente'
+            };
+            
+            paymentRecords.unshift(newPaymentRecord);
+            renderTable();
+            closeModal();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('paymentTableBody');
+            tbody.innerHTML = '';
+            
+            let totalUsd = 0, totalVes = 0, gabrielUsd = 0, jeffersonUsd = 0;
+
+            paymentRecords.forEach(payment => {
+                totalUsd += payment.usd;
+                totalVes += payment.ves;
+                if (payment.custodian.includes('Gabriel')) gabrielUsd += payment.usd;
+                if (payment.custodian.includes('Jefferson')) jeffersonUsd += payment.usd;
+
+                const statusBadge = payment.status === 'Conciliado' 
+                    ? `<span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full text-xs font-bold"><i class="fa-solid fa-check mr-1"></i>Conciliado</span>` 
+                    : `<span class="bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-1 rounded-full text-xs font-bold"><i class="fa-regular fa-clock mr-1"></i>Pendiente</span>`;
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition-colors" data-search="${payment.ref} ${payment.client} ${payment.bank} ${payment.method}">
+                        <td class="p-4">
+                            <div class="font-bold text-slate-800 font-mono text-xs">${payment.ref}</div>
+                            <div class="text-xs text-slate-400 mt-0.5">${payment.date}</div>
+                        </td>
+                        <td class="p-4 font-semibold text-slate-700">${payment.client}</td>
+                        <td class="p-4">
+                            <div class="text-sm font-medium text-slate-800">${payment.method}</div>
+                            <div class="text-xs text-slate-500 mt-0.5">${payment.bank}</div>
+                        </td>
+                        <td class="p-4 text-right font-mono font-medium text-slate-600">Bs ${payment.ves.toFixed(2)}</td>
+                        <td class="p-4 text-right font-mono text-xs text-slate-400">${payment.rate.toFixed(2)}</td>
+                        <td class="p-4 text-right font-mono font-bold text-slate-900">$${payment.usd.toFixed(2)}</td>
+                        <td class="p-4">
+                            <span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-200 shadow-sm">${payment.custodian}</span>
+                        </td>
+                        <td class="p-4 text-center">${statusBadge}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="deletePayment(${payment.id})" class="text-slate-400 hover:text-rose-600 transition-colors p-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('kpi-usd').innerText = `$${totalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('kpi-ves').innerText = `Bs ${totalVes.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('kpi-gabriel').innerText = `$${gabrielUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('kpi-jefferson').innerText = `$${jeffersonUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
+        function calculateUsd() {
+            const vesAmount = parseFloat(document.getElementById('ves').value) || 0;
+            const exchangeRate = parseFloat(document.getElementById('rate').value) || 1;
+            if (vesAmount >= 0 && exchangeRate > 0) {
+                document.getElementById('usd').value = (vesAmount / exchangeRate).toFixed(2);
+            }
+        }
+
+        function openModal() { 
+            document.getElementById('paymentModal').classList.remove('hidden'); 
+            toggleMethodFields();
+        }
+
+        function closeModal() { 
+            document.getElementById('paymentModal').classList.add('hidden'); 
+            document.getElementById('paymentForm').reset();
+            document.getElementById('date').valueAsDate = new Date();
+            document.getElementById('usd').value = "0";
+            document.getElementById('accountError').classList.add('hidden');
+            document.getElementById('refError').classList.add('hidden');
+            toggleMethodFields();
+        }
+
+        function deletePayment(id) {
+            if(confirm("Are you sure you want to delete this record?")) {
+                paymentRecords = paymentRecords.filter(record => record.id !== id);
+                renderTable();
+            }
+        }
+
+        function filterTable() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#paymentTableBody tr');
+            rows.forEach(row => {
+                row.style.display = row.getAttribute('data-search').toLowerCase().includes(query) ? '' : 'none';
+            });
+        }
+    </script>
+</body>
+</html>
