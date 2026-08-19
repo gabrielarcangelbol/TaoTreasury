@@ -1,20 +1,30 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reconciliación de Pagos y Tesorería</title>
+    <title>Payment Reconciliation & Treasury</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            blue: '#2563eb',
+                            indigo: '#4f46e5',
+                            emerald: '#059669',
+                            amber: '#d97706'
+                        }
+                    }
                 }
             }
         }
@@ -32,68 +42,67 @@
         <!-- Header Section -->
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-900 text-white p-6 rounded-2xl shadow-xl">
             <div>
-                <span class="bg-blue-600 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Fase 1: Auditoría de Pagos</span>
-                <h1 class="text-2xl font-bold mt-3">Módulo de Reconciliación y Tesorería</h1>
-                <p class="text-slate-400 text-sm mt-1">Control dinámico de saldos, cuentas de custodia y flujo multimoneda</p>
+                <span class="bg-blue-600 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Phase 1: Payment Audit</span>
+                <h1 class="text-2xl font-bold mt-3">Reconciliation & Treasury Module</h1>
+                <p class="text-slate-400 text-sm mt-1">Dynamic balance control, custody accounts, and multi-currency flow</p>
             </div>
             <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                 <button onclick="openInitialBalanceModal()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm">
-                    <i class="fa-solid fa-scale-balanced"></i> Configurar Fondos Iniciales
+                    <i class="fa-solid fa-scale-balanced"></i> Initial Balances
                 </button>
                 <button onclick="openModal()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30">
-                    <i class="fa-solid fa-plus"></i> Registrar Nuevo Pago
+                    <i class="fa-solid fa-plus"></i> Register Payment
                 </button>
             </div>
         </header>
 
         <!-- KPI Metric Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="glass-card p-5 rounded-2xl shadow-sm"><div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Fondos (USD)</div><div class="text-3xl font-bold text-slate-800 mt-2" id="kpi-usd">$0.00</div></div>
-            <div class="glass-card p-5 rounded-2xl shadow-sm"><div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Recaudado (VES)</div><div class="text-3xl font-bold text-slate-800 mt-2" id="kpi-ves">Bs 0.00</div></div>
-            <div class="glass-card p-5 rounded-2xl shadow-sm"><div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Custodia Gabriel</div><div class="text-3xl font-bold text-blue-600 mt-2" id="kpi-gabriel">$0.00</div></div>
-            <div class="glass-card p-5 rounded-2xl shadow-sm"><div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Custodia Jefferson</div><div class="text-3xl font-bold text-indigo-600 mt-2" id="kpi-jefferson">$0.00</div></div>
+            <div class="glass-card p-5 rounded-2xl shadow-sm"><div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Funds (USD)</div><div class="text-3xl font-bold text-slate-800 mt-2" id="kpi-usd">$0.00</div></div>
+            <div class="glass-card p-5 rounded-2xl shadow-sm"><div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Total Collected (VES)</div><div class="text-3xl font-bold text-slate-800 mt-2" id="kpi-ves">Bs 0.00</div></div>
+            <div class="glass-card p-5 rounded-2xl shadow-sm"><div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Gabriel Custody</div><div class="text-3xl font-bold text-blue-600 mt-2" id="kpi-gabriel">$0.00</div></div>
+            <div class="glass-card p-5 rounded-2xl shadow-sm"><div class="text-slate-500 text-xs font-semibold uppercase tracking-wider">Jefferson Custody</div><div class="text-3xl font-bold text-indigo-600 mt-2" id="kpi-jefferson">$0.00</div></div>
         </div>
 
-        <!-- Breakdown Panel: Who Has What & Where -->
+        <!-- Breakdown Panel: Donut Chart & Details -->
         <section class="glass-card rounded-2xl p-6 shadow-sm border border-slate-200">
             <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
                 <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fa-solid fa-chart-pie text-blue-600"></i> Distribución Actual de Fondos (Ubicación y Cuentas)
+                    <i class="fa-solid fa-chart-pie text-blue-600"></i> Funds Distribution
                 </h2>
-                <span class="text-xs font-semibold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200">Consolidado Total</span>
+                <span class="text-xs font-semibold bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full border border-emerald-200">Consolidated</span>
             </div>
             
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Gabriel Breakdown -->
-                <div class="bg-blue-50/40 rounded-xl p-4 border border-blue-100">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
+                
+                <!-- Chart Container -->
+                <div class="flex justify-center items-center h-48 lg:h-64 relative">
+                    <canvas id="distributionChart"></canvas>
+                    <!-- Center text for donut -->
+                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span class="text-xs text-slate-400 font-semibold uppercase">Total</span>
+                        <span class="text-xl font-bold text-slate-800" id="chart-center-total">$0.00</span>
+                    </div>
+                </div>
+
+                <!-- Gabriel Details -->
+                <div class="bg-blue-50/40 rounded-xl p-4 border border-blue-100 h-full flex flex-col">
                     <div class="flex justify-between items-center pb-2 border-b border-blue-100 mb-3">
-                        <span class="font-bold text-slate-800 text-sm flex items-center gap-2"><i class="fa-solid fa-user-check text-blue-600"></i> Gabriel Has</span>
+                        <span class="font-bold text-slate-800 text-sm flex items-center gap-2"><i class="fa-solid fa-user text-blue-600"></i> Gabriel</span>
                         <span class="font-bold text-blue-700 font-mono text-base" id="breakdown-gabriel-total">$0.00</span>
                     </div>
-                    <div id="breakdown-gabriel-items" class="space-y-2 text-xs"></div>
+                    <div id="breakdown-gabriel-items" class="space-y-2 text-xs flex-1"></div>
                 </div>
 
-                <!-- Jefferson Breakdown -->
-                <div class="bg-indigo-50/40 rounded-xl p-4 border border-indigo-100">
+                <!-- Jefferson Details -->
+                <div class="bg-indigo-50/40 rounded-xl p-4 border border-indigo-100 h-full flex flex-col">
                     <div class="flex justify-between items-center pb-2 border-b border-indigo-100 mb-3">
-                        <span class="font-bold text-slate-800 text-sm flex items-center gap-2"><i class="fa-solid fa-user-check text-indigo-600"></i> Jefferson Has</span>
+                        <span class="font-bold text-slate-800 text-sm flex items-center gap-2"><i class="fa-solid fa-user text-indigo-600"></i> Jefferson</span>
                         <span class="font-bold text-indigo-700 font-mono text-base" id="breakdown-jefferson-total">$0.00</span>
                     </div>
-                    <div id="breakdown-jefferson-items" class="space-y-2 text-xs"></div>
+                    <div id="breakdown-jefferson-items" class="space-y-2 text-xs flex-1"></div>
                 </div>
 
-                <!-- We Have Summary -->
-                <div class="bg-slate-900 text-white rounded-xl p-5 flex flex-col justify-between shadow-md">
-                    <div>
-                        <span class="text-xs font-semibold uppercase text-slate-400 tracking-wider">Total Consolidado</span>
-                        <h3 class="text-lg font-bold mt-1 text-slate-100">We Have</h3>
-                        <p class="text-xs text-slate-400 mt-1">Suma total de saldos iniciales + cobros acumulados</p>
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-slate-800 flex justify-between items-end">
-                        <span class="text-xs text-slate-400">Total en Divisas</span>
-                        <span class="text-3xl font-extrabold text-emerald-400 font-mono" id="breakdown-we-have">$0.00</span>
-                    </div>
-                </div>
             </div>
         </section>
 
@@ -103,12 +112,12 @@
                 <table class="w-full text-left text-sm whitespace-nowrap">
                     <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold border-b border-slate-200">
                         <tr>
-                            <th class="p-4 rounded-tl-lg">Fecha</th>
-                            <th class="p-4">Cliente</th>
-                            <th class="p-4">Método y Ruta</th>
-                            <th class="p-4">Custodio</th>
-                            <th class="p-4 text-right">Monto (USD)</th>
-                            <th class="p-4 text-center rounded-tr-lg">Acciones</th>
+                            <th class="p-4 rounded-tl-lg">Date</th>
+                            <th class="p-4">Client</th>
+                            <th class="p-4">Method & Account</th>
+                            <th class="p-4">Custodian</th>
+                            <th class="p-4 text-right">Amount (USD)</th>
+                            <th class="p-4 text-center rounded-tr-lg">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="paymentTableBody" class="divide-y divide-slate-100"></tbody>
@@ -117,13 +126,13 @@
         </main>
     </div>
 
-    <!-- Initial Balances Modal (Dynamic Detailed breakdown) -->
+    <!-- Initial Balances Modal (Modular standard inputs) -->
     <div id="initialBalanceModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 custom-scrollbar">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 custom-scrollbar">
             <div class="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-100 sticky top-0 z-10">
                 <div>
-                    <h3 class="text-lg font-bold text-slate-800">Saldos Iniciales y Cuentas Preexistentes</h3>
-                    <p class="text-xs text-slate-500">Define dónde tiene el dinero cada socio (Zelle, Binance, Efectivo, Bancamiga USD Cash, etc.)</p>
+                    <h3 class="text-lg font-bold text-slate-800">Initial Balances & Pre-existing Accounts</h3>
+                    <p class="text-xs text-slate-500">Define the starting funds using standard methods and destinations.</p>
                 </div>
                 <button onclick="closeInitialBalanceModal()" class="text-slate-400 hover:text-rose-500 transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
@@ -134,28 +143,28 @@
                 <!-- Gabriel Section -->
                 <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-3">
                     <div class="flex justify-between items-center">
-                        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-wallet text-blue-600"></i> Cuentas de Gabriel</h4>
+                        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-wallet text-blue-600"></i> Gabriel's Accounts</h4>
                         <button type="button" onclick="addBalanceRow('Gabriel')" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 font-medium">
-                            <i class="fa-solid fa-plus text-[10px]"></i> Agregar Cuenta
+                            <i class="fa-solid fa-plus text-[10px]"></i> Add Account
                         </button>
                     </div>
-                    <div id="gabrielBalanceRows" class="space-y-2"></div>
+                    <div id="gabrielBalanceRows" class="space-y-3"></div>
                 </div>
 
                 <!-- Jefferson Section -->
                 <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-3">
                     <div class="flex justify-between items-center">
-                        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-wallet text-indigo-600"></i> Cuentas de Jefferson</h4>
+                        <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-wallet text-indigo-600"></i> Jefferson's Accounts</h4>
                         <button type="button" onclick="addBalanceRow('Jefferson')" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 font-medium">
-                            <i class="fa-solid fa-plus text-[10px]"></i> Agregar Cuenta
+                            <i class="fa-solid fa-plus text-[10px]"></i> Add Account
                         </button>
                     </div>
-                    <div id="jeffersonBalanceRows" class="space-y-2"></div>
+                    <div id="jeffersonBalanceRows" class="space-y-3"></div>
                 </div>
 
                 <div class="pt-2 flex justify-end gap-3 border-t border-slate-100">
-                    <button type="button" onclick="closeInitialBalanceModal()" class="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
-                    <button type="submit" class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium shadow-sm transition-all">Guardar Saldos Iniciales</button>
+                    <button type="button" onclick="closeInitialBalanceModal()" class="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium shadow-sm transition-all">Save Initial Balances</button>
                 </div>
             </form>
         </div>
@@ -165,7 +174,7 @@
     <div id="paymentModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 custom-scrollbar">
             <div class="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-100 sticky top-0 z-10">
-                <h3 class="text-lg font-bold text-slate-800">Registrar Nuevo Pago</h3>
+                <h3 class="text-lg font-bold text-slate-800">Register New Payment</h3>
                 <button onclick="closeModal()" class="text-slate-400 hover:text-rose-500 transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
@@ -175,30 +184,29 @@
                 <!-- General Info -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Método de Pago</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Method</label>
                         <select id="method" onchange="toggleMethodFields()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            <option value="Pago Móvil">Pago Móvil</option>
-                            <option value="Transferencia Nacional">Transferencia Nacional (VES)</option>
-                            <option value="Cuenta USD Nacional">Cuenta USD Nacional (Bancamiga, Banesco, etc.)</option>
-                            <option value="Zelle">Zelle / UNFCU</option>
-                            <option value="Efectivo USD">Efectivo USD</option>
-                            <option value="Efectivo EUR">Efectivo EUR</option>
+                            <option value="Zelle">Zelle</option>
                             <option value="Binance USDT">Binance USDT</option>
+                            <option value="Cash USD">Cash USD</option>
+                            <option value="National USD Account">National USD Account (Bancamiga, etc.)</option>
+                            <option value="Mobile Payment">Mobile Payment (VES)</option>
+                            <option value="National Transfer">National Transfer (VES)</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Fecha</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Date</label>
                         <input type="date" id="date" required class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Nombre del Cliente</label>
-                        <input type="text" id="client" required placeholder="Nombre o Razón Social" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Client Name</label>
+                        <input type="text" id="client" required placeholder="Name or Company" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Custodio (Quién recibe)</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Custodian (Who receives it)</label>
                         <select id="custodian" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             <option value="Gabriel">Gabriel</option>
                             <option value="Jefferson">Jefferson</option>
@@ -206,192 +214,87 @@
                     </div>
                 </div>
 
-                <!-- Cuenta USD Nacional Specific Fields -->
-                <div id="usdNacionalFields" class="hidden bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Banco Destino USD</label>
-                            <select id="usdBank" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
-                                <option value="0172 - BANCAMIGA (Cuenta Cash USD)">0172 - BANCAMIGA (Cuenta Cash USD)</option>
-                                <option value="0134 - BANESCO (Cuenta Verde USD)">0134 - BANESCO (Cuenta Verde USD)</option>
-                                <option value="0105 - MERCANTIL (Cuenta Divisas)">0105 - MERCANTIL (Cuenta Divisas)</option>
-                                <option value="0191 - BNC (Cuenta M.E.)">0191 - BNC (Cuenta M.E.)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo de Operación</label>
-                            <select id="usdOpType" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
-                                <option value="Depósito en Taquilla (Cash)">Depósito en Taquilla (Cash USD)</option>
-                                <option value="Transferencia Cuenta Verde / M.E.">Transferencia Entre Cuentas M.E.</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Zelle Destination Fields -->
-                <div id="zelleFields" class="hidden grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Dynamic Destination Field (Handled by JS to maintain standard mapping) -->
+                <div id="dynamicDestinationContainer" class="grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Cuenta Destino</label>
-                        <select id="destination" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            <option value="UNFCU">UNFCU</option>
-                            <option value="Bank of America">Bank of America</option>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Destination Account</label>
+                        <select id="destinationAccount" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                            <!-- Populated dynamically -->
                         </select>
                     </div>
-                </div>
-
-                <!-- VES Dynamic Fields -->
-                <div id="vesFields" class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Banco Origen</label>
-                            <select id="sourceBank" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Banco Destino</label>
-                            <select id="targetBank" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></select>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Documento Identidad</label>
-                            <div class="flex">
-                                <select id="docType" class="w-20 px-2 py-2.5 border border-slate-200 border-r-0 rounded-l-lg text-sm focus:outline-none focus:border-blue-500 bg-slate-50">
-                                    <option value="V">V</option><option value="E">E</option><option value="J">J</option><option value="P">P</option><option value="G">G</option>
-                                </select>
-                                <input type="text" id="docNumber" placeholder="12345678" class="w-full px-3 py-2.5 border border-slate-200 rounded-r-lg text-sm focus:outline-none focus:border-blue-500">
-                            </div>
-                        </div>
-
-                        <div id="pagoMovilFields">
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Teléfono</label>
-                            <div class="flex">
-                                <select id="phonePrefix" class="w-24 px-2 py-2.5 border border-slate-200 border-r-0 rounded-l-lg text-sm focus:outline-none focus:border-blue-500 bg-slate-50">
-                                    <option value="0412">0412</option><option value="0414">0414</option><option value="0424">0424</option><option value="0416">0416</option><option value="0426">0426</option>
-                                </select>
-                                <input type="text" id="phoneNumber" placeholder="1234567" maxlength="7" class="w-full px-3 py-2.5 border border-slate-200 rounded-r-lg text-sm focus:outline-none focus:border-blue-500 font-mono">
-                            </div>
-                        </div>
-
-                        <div id="transferenciaFields" class="hidden">
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Número de Cuenta (20 dígitos)</label>
-                            <input type="text" id="accountNumber" placeholder="01020000000000000000" maxlength="20" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono">
-                            <p id="accountError" class="text-xs text-rose-500 mt-1 hidden"><i class="fa-solid fa-circle-exclamation"></i> Debe iniciar con el código del Banco Destino.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Binance Fields -->
-                <div id="binanceFields" class="hidden bg-yellow-50/50 p-4 rounded-xl border border-yellow-100 space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Alias / Email Binance</label>
-                            <input type="text" id="binanceAlias" placeholder="usuario@email.com o Pay ID" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-yellow-500">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Order ID</label>
-                            <input type="text" id="binanceOrderId" placeholder="2023456789" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-yellow-500 font-mono">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Cash USD Fields -->
-                <div id="cashFields" class="hidden bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 space-y-4">
-                    <label class="block text-xs font-semibold text-slate-600 mb-1">Registrar Billetes USD</label>
-                    <div class="flex gap-2">
-                        <select id="billDenomination" class="w-32 px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
-                            <option value="1">$1 Billete</option><option value="5">$5 Billete</option><option value="10">$10 Billete</option><option value="20">$20 Billete</option><option value="50">$50 Billete</option><option value="100">$100 Billete</option>
-                        </select>
-                        <input type="number" id="billQuantity" placeholder="Cant" min="1" value="1" class="w-24 px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-emerald-500">
-                        <button type="button" onclick="generateSerialInputs()" class="px-4 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors">Agregar</button>
-                    </div>
-                    <div id="serialNumbersContainer" class="space-y-2 mt-3"></div>
                 </div>
 
                 <!-- Shared References & Receipts -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div id="referenceContainer">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Número de Referencia</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Reference Number</label>
                         <input type="text" id="ref" placeholder="123456" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono">
                     </div>
                     <div id="receiptContainer">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Comprobante (Opcional)</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Receipt Attachment</label>
                         <input type="file" id="receipt" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600">
                     </div>
                 </div>
 
                 <!-- Amounts Section -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
-                    <div id="vesAmountContainer" class="col-span-2 grid grid-cols-2 gap-4">
+                    <div id="vesAmountContainer" class="col-span-2 grid grid-cols-2 gap-4 hidden">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Monto (VES)</label>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (VES)</label>
                             <input type="number" step="0.01" id="ves" oninput="calculateUsd()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono" value="0">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Tasa (Bs/$)</label>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Exchange Rate</label>
                             <input type="number" step="0.01" id="rate" oninput="calculateUsd()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono" value="36.50">
                         </div>
                     </div>
                     <div class="col-span-1" id="usdAmountContainer">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1" id="usdLabel">Monto Total (USD)</label>
-                        <input type="number" step="0.01" id="usd" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-700 font-bold font-mono" value="0">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1" id="usdLabel">Amount (USD)</label>
+                        <input type="number" step="0.01" id="usd" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-700 font-bold font-mono" value="0">
                     </div>
                 </div>
 
                 <div class="pt-4 flex justify-end gap-3 mt-6">
-                    <button type="button" onclick="closeModal()" class="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
-                    <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-sm transition-all shadow-blue-500/30">Guardar Pago</button>
+                    <button type="button" onclick="closeModal()" class="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium shadow-sm transition-all shadow-blue-500/30">Save Record</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        const banksData = [
-            {"code": "0102", "name": "BANCO DE VENEZUELA"},
-            {"code": "0104", "name": "BANCO VENEZOLANO DE CREDITO"},
-            {"code": "0105", "name": "BANCO MERCANTIL"},
-            {"code": "0108", "name": "BBVA PROVINCIAL"},
-            {"code": "0114", "name": "BANCARIBE"},
-            {"code": "0115", "name": "BANCO EXTERIOR"},
-            {"code": "0134", "name": "BANESCO"},
-            {"code": "0156", "name": "100% BANCO"},
-            {"code": "0163", "name": "BANCO DEL TESORO"},
-            {"code": "0172", "name": "BANCAMIGA"},
-            {"code": "0175", "name": "BANCO DIGITAL DE LOS TRABAJADORES"},
-            {"code": "0191", "name": "BANCO NACIONAL DE CREDITO"}
-        ];
+        // Standardized Chart of Accounts mapping Method -> Available Destinations
+        const ACCOUNT_STANDARDS = {
+            "Zelle": ["UNFCU", "Bank of America"],
+            "Binance USDT": ["Binance Wallet"],
+            "Cash USD": ["Physical Cash"],
+            "National USD Account": ["0172 - BANCAMIGA (Cash USD)", "0134 - BANESCO (Cuenta Verde)", "0105 - MERCANTIL (Divisas)", "0191 - BNC (M.E.)"],
+            "Mobile Payment": ["0102 - BANCO DE VENEZUELA", "0134 - BANESCO", "0105 - MERCANTIL", "0108 - PROVINCIAL"],
+            "National Transfer": ["0102 - BANCO DE VENEZUELA", "0134 - BANESCO", "0105 - MERCANTIL", "0108 - PROVINCIAL"]
+        };
 
-        // Seeded Initial State as per user provided exact dataset
+        // Empty starting state so user can add manually
         let initialBalances = {
-            Gabriel: [
-                { where: "UNFCU / ZELLE", amount: 255.80 },
-                { where: "BINANCE", amount: 35.00 },
-                { where: "CASH", amount: 20.00 }
-            ],
-            Jefferson: [
-                { where: "CASH", amount: 295.00 },
-                { where: "BANCAMIGA's USD CASH ACCOUNT", amount: 40.00 }
-            ]
+            Gabriel: [],
+            Jefferson: []
         };
 
         let paymentRecords = [];
-        let cashTotalUsd = 0;
+        let myChart = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            const sourceSelect = document.getElementById('sourceBank');
-            const targetSelect = document.getElementById('targetBank');
-            
-            banksData.forEach(b => {
-                const option = `<option value="${b.code}">${b.code} - ${b.name}</option>`;
-                sourceSelect.innerHTML += option;
-                targetSelect.innerHTML += option;
-            });
-            
             document.getElementById('date').valueAsDate = new Date();
             toggleMethodFields(); 
             renderTable();
         });
+
+        // Generates dropdown options for a specific method
+        function generateAccountOptionsHtml(methodStr, selectedValue = "") {
+            const destinations = ACCOUNT_STANDARDS[methodStr] || [];
+            return destinations.map(dest => 
+                `<option value="${dest}" ${dest === selectedValue ? 'selected' : ''}>${dest}</option>`
+            ).join('');
+        }
 
         /* --- INITIAL BALANCE LOGIC --- */
         function openInitialBalanceModal() {
@@ -409,22 +312,50 @@
             container.innerHTML = '';
 
             initialBalances[custodian].forEach((item, index) => {
+                const methodOptions = Object.keys(ACCOUNT_STANDARDS).map(m => 
+                    `<option value="${m}" ${m === item.method ? 'selected' : ''}>${m}</option>`
+                ).join('');
+                
+                const destinationOptions = generateAccountOptionsHtml(item.method, item.destination);
+
                 container.innerHTML += `
-                    <div class="flex items-center gap-2">
-                        <input type="text" value="${item.where}" placeholder="Ej. Zelle, Binance, Cash, Bancamiga USD..." 
-                               class="where-input w-2/3 px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500 uppercase font-medium">
-                        <input type="number" step="0.01" value="${item.amount}" placeholder="Monto $" 
-                               class="amount-input w-1/3 px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500 font-mono font-bold">
-                        <button type="button" onclick="removeBalanceRow('${custodian}', ${index})" class="text-slate-400 hover:text-rose-500 p-1">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
+                    <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200" id="row-${custodian}-${index}">
+                        <div class="w-1/3">
+                            <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Method</label>
+                            <select onchange="updateBalanceDestinations('${custodian}', ${index})" class="method-select w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:border-blue-500">
+                                ${methodOptions}
+                            </select>
+                        </div>
+                        <div class="w-1/3">
+                            <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Account / Destination</label>
+                            <select class="dest-select w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:border-blue-500">
+                                ${destinationOptions}
+                            </select>
+                        </div>
+                        <div class="w-1/4">
+                            <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Amount ($)</label>
+                            <input type="number" step="0.01" value="${item.amount}" class="amount-input w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:border-blue-500 font-mono font-bold">
+                        </div>
+                        <div class="w-1/12 flex justify-center items-end pb-1">
+                            <button type="button" onclick="removeBalanceRow('${custodian}', ${index})" class="text-slate-400 hover:text-rose-500 p-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
                     </div>
                 `;
             });
         }
 
+        // Dynamically update destinations when method changes in Initial Balances Modal
+        function updateBalanceDestinations(custodian, index) {
+            const row = document.getElementById(`row-${custodian}-${index}`);
+            const methodSelect = row.querySelector('.method-select');
+            const destSelect = row.querySelector('.dest-select');
+            destSelect.innerHTML = generateAccountOptionsHtml(methodSelect.value);
+        }
+
         function addBalanceRow(custodian) {
-            initialBalances[custodian].push({ where: "NUEVA CUENTA", amount: 0 });
+            initialBalances[custodian].push({ method: "Zelle", destination: "UNFCU", amount: 0 });
             renderBalanceRows(custodian);
         }
 
@@ -438,14 +369,14 @@
 
             ['Gabriel', 'Jefferson'].forEach(custodian => {
                 const container = document.getElementById(custodian.toLowerCase() + 'BalanceRows');
-                const whereInputs = container.querySelectorAll('.where-input');
-                const amountInputs = container.querySelectorAll('.amount-input');
+                const rows = container.querySelectorAll('[id^="row-"]');
                 
                 const updatedList = [];
-                whereInputs.forEach((inp, idx) => {
-                    const whereVal = inp.value.trim() || 'VARIOS';
-                    const amountVal = parseFloat(amountInputs[idx].value) || 0;
-                    updatedList.push({ where: whereVal, amount: amountVal });
+                rows.forEach(row => {
+                    const methodVal = row.querySelector('.method-select').value;
+                    const destVal = row.querySelector('.dest-select').value;
+                    const amountVal = parseFloat(row.querySelector('.amount-input').value) || 0;
+                    updatedList.push({ method: methodVal, destination: destVal, amount: amountVal });
                 });
                 initialBalances[custodian] = updatedList;
             });
@@ -454,98 +385,37 @@
             renderTable();
         }
 
-        /* --- UI TOGGLES AND CALCULATIONS --- */
+        /* --- PAYMENT REGISTRATION LOGIC --- */
         function toggleMethodFields() {
             const method = document.getElementById('method').value;
+            const destSelect = document.getElementById('destinationAccount');
             
-            const usdNacionalFields = document.getElementById('usdNacionalFields');
-            const zelleFields = document.getElementById('zelleFields');
-            const vesFields = document.getElementById('vesFields');
-            const pagoMovilFields = document.getElementById('pagoMovilFields');
-            const transfFields = document.getElementById('transferenciaFields');
-            const binanceFields = document.getElementById('binanceFields');
-            const cashFields = document.getElementById('cashFields');
-            
+            // Populate destinations based on standard definitions
+            destSelect.innerHTML = generateAccountOptionsHtml(method);
+
             const vesAmountContainer = document.getElementById('vesAmountContainer');
-            const referenceContainer = document.getElementById('referenceContainer');
             const usdInput = document.getElementById('usd');
-            const usdLabel = document.getElementById('usdLabel');
 
-            usdNacionalFields.classList.add('hidden');
-            zelleFields.classList.add('hidden');
-            zelleFields.classList.remove('grid');
-            vesFields.classList.add('hidden'); 
-            pagoMovilFields.classList.add('hidden'); 
-            transfFields.classList.add('hidden');
-            binanceFields.classList.add('hidden'); 
-            cashFields.classList.add('hidden');
-            vesAmountContainer.classList.add('hidden'); 
-            referenceContainer.classList.remove('hidden');
-            
-            usdInput.readOnly = false;
-            usdInput.classList.remove('bg-slate-100');
-            usdLabel.innerText = "Monto Total (USD)";
-
-            if (method === 'Pago Móvil' || method === 'Transferencia Nacional') {
-                vesFields.classList.remove('hidden');
+            // Handle VES vs USD logic
+            if (method === 'Mobile Payment' || method === 'National Transfer') {
                 vesAmountContainer.classList.remove('hidden');
                 usdInput.readOnly = true; 
                 usdInput.classList.add('bg-slate-100');
-                if (method === 'Pago Móvil') pagoMovilFields.classList.remove('hidden');
-                else transfFields.classList.remove('hidden');
-            } else if (method === 'Cuenta USD Nacional') {
-                usdNacionalFields.classList.remove('hidden');
-            } else if (method === 'Zelle') {
-                zelleFields.classList.remove('hidden');
-                zelleFields.classList.add('grid');
-            } else if (method === 'Efectivo USD') {
-                cashFields.classList.remove('hidden');
-                usdInput.readOnly = true; 
-                usdInput.classList.add('bg-slate-100');
-            } else if (method === 'Binance USDT') {
-                binanceFields.classList.remove('hidden');
-                usdLabel.innerText = "Monto (USDT)";
+            } else {
+                vesAmountContainer.classList.add('hidden');
+                usdInput.readOnly = false;
+                usdInput.classList.remove('bg-slate-100');
+                document.getElementById('ves').value = 0;
             }
         }
 
         function calculateUsd() {
             const method = document.getElementById('method').value;
-            if(method === 'Pago Móvil' || method === 'Transferencia Nacional') {
+            if(method === 'Mobile Payment' || method === 'National Transfer') {
                 const ves = parseFloat(document.getElementById('ves').value) || 0;
                 const rate = parseFloat(document.getElementById('rate').value) || 1;
                 if (rate > 0) document.getElementById('usd').value = (ves / rate).toFixed(2);
             }
-        }
-
-        function generateSerialInputs() {
-            const denom = parseInt(document.getElementById('billDenomination').value);
-            const qty = parseInt(document.getElementById('billQuantity').value);
-            const container = document.getElementById('serialNumbersContainer');
-            
-            if(qty > 0) {
-                const batchId = Date.now();
-                let htmlStr = `<div class="p-3 bg-white border border-emerald-200 rounded-lg" id="batch-${batchId}">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="text-xs font-bold text-slate-700">${qty} x $${denom} Billetes ($${denom * qty})</span>
-                        <button type="button" onclick="removeBatch(${batchId}, ${denom * qty})" class="text-rose-500 text-xs hover:underline">Eliminar</button>
-                    </div><div class="grid grid-cols-2 gap-2">`;
-                
-                for(let i=1; i<=qty; i++) {
-                    htmlStr += `<input type="text" placeholder="Serial ${i}" required class="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:border-emerald-500 font-mono uppercase">`;
-                }
-                htmlStr += `</div></div>`;
-                container.innerHTML += htmlStr;
-                
-                cashTotalUsd += (denom * qty);
-                document.getElementById('usd').value = cashTotalUsd.toFixed(2);
-                document.getElementById('billQuantity').value = 1;
-            }
-        }
-
-        function removeBatch(batchId, amountToDeduct) {
-            document.getElementById(`batch-${batchId}`).remove();
-            cashTotalUsd -= amountToDeduct;
-            document.getElementById('usd').value = cashTotalUsd.toFixed(2);
         }
 
         function openModal() { 
@@ -556,43 +426,23 @@
         function closeModal() { 
             document.getElementById('paymentModal').classList.add('hidden'); 
             document.getElementById('paymentForm').reset();
-            document.getElementById('serialNumbersContainer').innerHTML = '';
-            cashTotalUsd = 0;
+            document.getElementById('date').valueAsDate = new Date();
             toggleMethodFields();
         }
 
-        /* --- ADD PAYMENT RECORD --- */
         function addPayment(event) {
             event.preventDefault();
             
             const method = document.getElementById('method').value;
+            const destination = document.getElementById('destinationAccount').value;
             const custodian = document.getElementById('custodian').value;
-            let routeString = "";
-
-            if (method === 'Pago Móvil' || method === 'Transferencia Nacional') {
-                const source = document.getElementById('sourceBank').value;
-                const target = document.getElementById('targetBank').value;
-                routeString = `${source} ➔ ${target}`;
-            } else if (method === 'Cuenta USD Nacional') {
-                const bank = document.getElementById('usdBank').value;
-                const type = document.getElementById('usdOpType').value;
-                routeString = `${bank} (${type})`;
-            } else if (method === 'Zelle') {
-                const dest = document.getElementById('destination').value;
-                routeString = `➔ ${dest}`;
-            } else if (method === 'Binance USDT') {
-                const orderId = document.getElementById('binanceOrderId').value;
-                routeString = orderId ? `Orden: ${orderId}` : `Binance Pay`;
-            } else if (method === 'Efectivo USD') {
-                routeString = `Entrega Física USD`;
-            }
 
             const newRecord = {
                 id: Date.now(),
                 date: document.getElementById('date').value,
                 client: document.getElementById('client').value,
                 method: method,
-                route: routeString,
+                destination: destination,
                 custodian: custodian,
                 usd: parseFloat(document.getElementById('usd').value) || 0,
                 ves: parseFloat(document.getElementById('ves').value) || 0
@@ -603,42 +453,40 @@
             closeModal();
         }
 
-        /* --- RENDER LOGIC --- */
+        /* --- RENDER & CHART LOGIC --- */
         function renderTable() {
             const tbody = document.getElementById('paymentTableBody');
             tbody.innerHTML = '';
             
-            // Map Breakdown per Partner and Method
             let gabrielBreakdown = {};
             let jeffersonBreakdown = {};
+            let globalBreakdown = {}; // For the Chart
             
             let totalGabrielUsd = 0;
             let totalJeffersonUsd = 0;
             let totalVes = 0;
 
-            // 1. Process Initial Balances
-            initialBalances.Gabriel.forEach(item => {
-                gabrielBreakdown[item.where] = (gabrielBreakdown[item.where] || 0) + item.amount;
-                totalGabrielUsd += item.amount;
-            });
+            // Helper to aggregate data
+            const addToBreakdown = (custodian, method, dest, amount) => {
+                const label = `${method} (${dest})`;
+                if (custodian === 'Gabriel') {
+                    gabrielBreakdown[label] = (gabrielBreakdown[label] || 0) + amount;
+                    totalGabrielUsd += amount;
+                } else {
+                    jeffersonBreakdown[label] = (jeffersonBreakdown[label] || 0) + amount;
+                    totalJeffersonUsd += amount;
+                }
+                globalBreakdown[label] = (globalBreakdown[label] || 0) + amount;
+            };
 
-            initialBalances.Jefferson.forEach(item => {
-                jeffersonBreakdown[item.where] = (jeffersonBreakdown[item.where] || 0) + item.amount;
-                totalJeffersonUsd += item.amount;
-            });
+            // 1. Process Initial Balances
+            initialBalances.Gabriel.forEach(item => addToBreakdown('Gabriel', item.method, item.destination, item.amount));
+            initialBalances.Jefferson.forEach(item => addToBreakdown('Jefferson', item.method, item.destination, item.amount));
 
             // 2. Process Transactions
             paymentRecords.forEach(p => {
                 totalVes += p.ves;
-                const targetWhere = p.method.toUpperCase();
-
-                if (p.custodian === 'Gabriel') {
-                    gabrielBreakdown[targetWhere] = (gabrielBreakdown[targetWhere] || 0) + p.usd;
-                    totalGabrielUsd += p.usd;
-                } else {
-                    jeffersonBreakdown[targetWhere] = (jeffersonBreakdown[targetWhere] || 0) + p.usd;
-                    totalJeffersonUsd += p.usd;
-                }
+                addToBreakdown(p.custodian, p.method, p.destination, p.usd);
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-50 border-b border-slate-50">
@@ -646,7 +494,7 @@
                         <td class="p-4 font-semibold text-slate-700">${p.client}</td>
                         <td class="p-4">
                             <div class="text-sm font-medium text-slate-800">${p.method}</div>
-                            <div class="text-xs text-slate-500 mt-0.5">${p.route}</div>
+                            <div class="text-xs text-slate-500 mt-0.5">${p.destination}</div>
                         </td>
                         <td class="p-4">
                             <span class="px-2 py-1 rounded text-xs font-semibold ${p.custodian === 'Gabriel' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'}">
@@ -659,24 +507,6 @@
                 `;
             });
 
-            // 3. Render Initial Balance Line Items in Table
-            const initTotalUsd = (initialBalances.Gabriel.reduce((a,b)=>a+b.amount,0) + initialBalances.Jefferson.reduce((a,b)=>a+b.amount,0));
-            if (initTotalUsd > 0) {
-                tbody.innerHTML += `
-                    <tr class="bg-slate-100/70 border-t-2 border-slate-200">
-                        <td class="p-4 text-xs font-mono text-slate-500">Base</td>
-                        <td class="p-4 font-bold text-slate-800">Fondos Preexistentes Iniciales</td>
-                        <td class="p-4">
-                            <div class="text-sm font-medium text-slate-800">Saldos Declarados</div>
-                            <div class="text-xs text-slate-500 mt-0.5">UNFCU, Binance, Cash, Bancamiga USD</div>
-                        </td>
-                        <td class="p-4"><span class="bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-bold">Consolidado</span></td>
-                        <td class="p-4 text-right font-extrabold text-slate-900">$${initTotalUsd.toFixed(2)}</td>
-                        <td class="p-4 text-center text-slate-400"></td>
-                    </tr>
-                `;
-            }
-
             // Update UI Cards
             const grandTotalUsd = totalGabrielUsd + totalJeffersonUsd;
             document.getElementById('kpi-usd').innerText = `$${grandTotalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -687,7 +517,10 @@
             // Update Breakdown Panel
             renderBreakdownList('gabriel', gabrielBreakdown, totalGabrielUsd);
             renderBreakdownList('jefferson', jeffersonBreakdown, totalJeffersonUsd);
-            document.getElementById('breakdown-we-have').innerText = `$${grandTotalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('chart-center-total').innerText = `$${grandTotalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            // Update Chart
+            updateChart(globalBreakdown);
         }
 
         function renderBreakdownList(custodianKey, breakdownObj, total) {
@@ -697,19 +530,80 @@
 
             const keys = Object.keys(breakdownObj);
             if(keys.length === 0) {
-                container.innerHTML = `<span class="text-slate-400 italic">Sin fondos registrados</span>`;
+                container.innerHTML = `<span class="text-slate-400 italic">No funds registered</span>`;
                 return;
             }
 
-            keys.forEach(where => {
-                const val = breakdownObj[where];
+            keys.forEach(key => {
+                const val = breakdownObj[key];
                 if (val > 0) {
                     container.innerHTML += `
                         <div class="flex justify-between items-center py-1 border-b border-slate-100 last:border-0">
-                            <span class="font-medium text-slate-600 uppercase text-[11px]">${where}</span>
+                            <span class="font-medium text-slate-600 truncate mr-2" title="${key}">${key}</span>
                             <span class="font-bold text-slate-800 font-mono">$${val.toFixed(2)}</span>
                         </div>
                     `;
+                }
+            });
+        }
+
+        function updateChart(dataObj) {
+            const ctx = document.getElementById('distributionChart').getContext('2d');
+            
+            const labels = Object.keys(dataObj).filter(k => dataObj[k] > 0);
+            const data = labels.map(k => dataObj[k]);
+
+            // Tailwind specific colors corresponding to app theme
+            const bgColors = [
+                '#2563eb', // blue-600
+                '#4f46e5', // indigo-600
+                '#059669', // emerald-600
+                '#d97706', // amber-600
+                '#0ea5e9', // sky-500
+                '#8b5cf6', // violet-500
+                '#10b981'  // emerald-500
+            ];
+
+            if(myChart) {
+                myChart.destroy();
+            }
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels.length ? labels : ['No Data'],
+                    datasets: [{
+                        data: data.length ? data : [1],
+                        backgroundColor: data.length ? bgColors.slice(0, data.length) : ['#e2e8f0'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%', // Makes it a thin donut for the center text
+                    plugins: {
+                        legend: {
+                            display: false // Hidden to keep it clean, data is detailed in the panels next to it
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if(!data.length) return ' No Funds';
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
                 }
             });
         }
