@@ -219,13 +219,13 @@
                     <div id="eurSerialNumbersContainer" class="space-y-2 mt-3"></div>
                 </div>
 
-                <!-- Shared References -->
+                <!-- Shared References & Receipts -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div id="referenceContainer">
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Reference Number</label>
                         <input type="text" id="ref" placeholder="123456" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono">
                     </div>
-                    <div>
+                    <div id="receiptContainer">
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Receipt Attachment</label>
                         <input type="file" id="receipt" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600">
                     </div>
@@ -254,7 +254,7 @@
                         </div>
                     </div>
                     <div class="col-span-1" id="usdAmountContainer">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (USD)</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1" id="usdLabel">Amount (USD)</label>
                         <input type="number" step="0.01" id="usd" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-slate-100 text-slate-700 font-bold font-mono" value="0">
                     </div>
                 </div>
@@ -316,7 +316,9 @@
             const vesAmountContainer = document.getElementById('vesAmountContainer');
             const eurAmountContainer = document.getElementById('eurAmountContainer');
             const referenceContainer = document.getElementById('referenceContainer');
+            const receiptContainer = document.getElementById('receiptContainer');
             const usdInput = document.getElementById('usd');
+            const usdLabel = document.getElementById('usdLabel');
 
             // Hide all specialized sections first
             zelleFields.classList.add('hidden');
@@ -330,10 +332,12 @@
             vesAmountContainer.classList.add('hidden'); 
             eurAmountContainer.classList.add('hidden');
             referenceContainer.classList.add('hidden');
+            receiptContainer.classList.remove('hidden'); // Receipt is visible for most methods now
             
             // Reset USD Input state
             usdInput.readOnly = false;
             usdInput.classList.remove('bg-slate-100');
+            usdLabel.innerText = "Amount (USD)";
 
             if (method === 'Pago Móvil' || method === 'Transferencia Nacional') {
                 vesFields.classList.remove('hidden');
@@ -363,6 +367,9 @@
                 
             } else if (method === 'Binance USDT') {
                 binanceFields.classList.remove('hidden');
+                usdInput.readOnly = false; // Permite ingresar el monto manual en USDT/USD para Binance
+                usdInput.classList.remove('bg-slate-100');
+                usdLabel.innerText = "Amount (USDT)";
             }
         }
 
@@ -492,7 +499,7 @@
                 routeString = `➔ ${dest}`;
             } else if (method === 'Binance USDT') {
                 const orderId = document.getElementById('binanceOrderId').value;
-                routeString = `Order: ${orderId}`;
+                routeString = orderId ? `Order: ${orderId}` : `Binance Pay`;
             } else if (method === 'Efectivo USD') {
                 routeString = `Hand delivery (USD)`;
             } else if (method === 'Efectivo EUR') {
