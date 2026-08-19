@@ -50,6 +50,9 @@
                 <button onclick="openInitialBalanceModal()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm">
                     <i class="fa-solid fa-scale-balanced"></i> Initial Balances
                 </button>
+                <button onclick="openTransferModal()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm">
+                    <i class="fa-solid fa-right-left"></i> Internal Transfer
+                </button>
                 <button onclick="openModal()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30">
                     <i class="fa-solid fa-plus"></i> Register Payment
                 </button>
@@ -74,11 +77,9 @@
             </div>
             
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-                
                 <!-- Chart Container -->
                 <div class="flex justify-center items-center h-48 lg:h-64 relative">
                     <canvas id="distributionChart"></canvas>
-                    <!-- Center text for donut -->
                     <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                         <span class="text-xs text-slate-400 font-semibold uppercase">Total</span>
                         <span class="text-xl font-bold text-slate-800" id="chart-center-total">$0.00</span>
@@ -102,7 +103,6 @@
                     </div>
                     <div id="breakdown-jefferson-items" class="space-y-2 text-xs flex-1"></div>
                 </div>
-
             </div>
         </section>
 
@@ -113,7 +113,7 @@
                     <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold border-b border-slate-200">
                         <tr>
                             <th class="p-4 rounded-tl-lg">Date</th>
-                            <th class="p-4">Client</th>
+                            <th class="p-4">Client / Type</th>
                             <th class="p-4">Method & Account</th>
                             <th class="p-4">Custodian</th>
                             <th class="p-4 text-right">Amount (USD)</th>
@@ -126,7 +126,7 @@
         </main>
     </div>
 
-    <!-- Initial Balances Modal (Modular standard inputs) -->
+    <!-- Initial Balances Modal -->
     <div id="initialBalanceModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 custom-scrollbar">
             <div class="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-100 sticky top-0 z-10">
@@ -170,7 +170,7 @@
         </div>
     </div>
 
-    <!-- Registration Modal Form -->
+    <!-- Registration Modal Form (Client Payment) -->
     <div id="paymentModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 custom-scrollbar">
             <div class="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-100 sticky top-0 z-10">
@@ -181,7 +181,6 @@
             </div>
             
             <form id="paymentForm" onsubmit="addPayment(event)" class="p-6 space-y-5">
-                <!-- General Info -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Method</label>
@@ -214,7 +213,6 @@
                     </div>
                 </div>
 
-                <!-- Dynamic Destination Field (Handled by JS to maintain standard mapping) -->
                 <div id="dynamicDestinationContainer" class="grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Destination Account</label>
@@ -224,19 +222,6 @@
                     </div>
                 </div>
 
-                <!-- Shared References & Receipts -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div id="referenceContainer">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Reference Number</label>
-                        <input type="text" id="ref" placeholder="123456" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 font-mono">
-                    </div>
-                    <div id="receiptContainer">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Receipt Attachment</label>
-                        <input type="file" id="receipt" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600">
-                    </div>
-                </div>
-
-                <!-- Amounts Section -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
                     <div id="vesAmountContainer" class="col-span-2 grid grid-cols-2 gap-4 hidden">
                         <div>
@@ -262,8 +247,91 @@
         </div>
     </div>
 
+    <!-- Internal Transfer Modal Form -->
+    <div id="transferModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 custom-scrollbar">
+            <div class="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-100 sticky top-0 z-10">
+                <h3 class="text-lg font-bold text-slate-800">Register Internal Transfer</h3>
+                <button onclick="closeTransferModal()" class="text-slate-400 hover:text-rose-500 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="transferForm" onsubmit="addTransfer(event)" class="p-6 space-y-5">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Date</label>
+                    <input type="date" id="transferDate" required class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-slate-500">
+                </div>
+
+                <!-- Sender (From) -->
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                    <h4 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-arrow-up-right-from-square text-rose-500 mr-2"></i>Sender (From)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Custodian</label>
+                            <select id="transferFromCustodian" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                                <option value="Jefferson">Jefferson</option>
+                                <option value="Gabriel">Gabriel</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Method</label>
+                            <select id="transferFromMethod" onchange="updateTransferDestinations('From')" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                                <option value="Zelle">Zelle</option>
+                                <option value="Binance USDT">Binance USDT</option>
+                                <option value="Cash USD">Cash USD</option>
+                                <option value="National USD Account">National USD Account</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Account</label>
+                            <select id="transferFromAccount" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Receiver (To) -->
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                    <h4 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-arrow-right-to-bracket text-emerald-500 mr-2"></i>Receiver (To)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Custodian</label>
+                            <select id="transferToCustodian" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                                <option value="Gabriel">Gabriel</option>
+                                <option value="Jefferson">Jefferson</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Method</label>
+                            <select id="transferToMethod" onchange="updateTransferDestinations('To')" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                                <option value="Zelle">Zelle</option>
+                                <option value="Binance USDT">Binance USDT</option>
+                                <option value="Cash USD">Cash USD</option>
+                                <option value="National USD Account">National USD Account</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Account</label>
+                            <select id="transferToAccount" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Amount -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Transfer Amount (USD)</label>
+                    <input type="number" step="0.01" id="transferAmount" required class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-700 font-bold font-mono" value="0">
+                </div>
+
+                <div class="pt-4 flex justify-end gap-3 mt-6">
+                    <button type="button" onclick="closeTransferModal()" class="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium shadow-sm transition-all">Save Transfer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
-        // Standardized Chart of Accounts mapping Method -> Available Destinations
         const ACCOUNT_STANDARDS = {
             "Zelle": ["UNFCU", "Bank of America"],
             "Binance USDT": ["Binance Wallet"],
@@ -273,22 +341,19 @@
             "National Transfer": ["0102 - BANCO DE VENEZUELA", "0134 - BANESCO", "0105 - MERCANTIL", "0108 - PROVINCIAL"]
         };
 
-        // Empty starting state so user can add manually
-        let initialBalances = {
-            Gabriel: [],
-            Jefferson: []
-        };
-
+        let initialBalances = { Gabriel: [], Jefferson: [] };
         let paymentRecords = [];
         let myChart = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('date').valueAsDate = new Date();
+            document.getElementById('transferDate').valueAsDate = new Date();
             toggleMethodFields(); 
+            updateTransferDestinations('From');
+            updateTransferDestinations('To');
             renderTable();
         });
 
-        // Generates dropdown options for a specific method
         function generateAccountOptionsHtml(methodStr, selectedValue = "") {
             const destinations = ACCOUNT_STANDARDS[methodStr] || [];
             return destinations.map(dest => 
@@ -307,6 +372,21 @@
             document.getElementById('initialBalanceModal').classList.add('hidden');
         }
 
+        function saveCurrentRowState(custodian) {
+            const container = document.getElementById(custodian.toLowerCase() + 'BalanceRows');
+            if(!container) return;
+            const rows = container.querySelectorAll('[id^="row-"]');
+            
+            const updatedList = [];
+            rows.forEach(row => {
+                const methodVal = row.querySelector('.method-select').value;
+                const destVal = row.querySelector('.dest-select').value;
+                const amountVal = parseFloat(row.querySelector('.amount-input').value) || 0;
+                updatedList.push({ method: methodVal, destination: destVal, amount: amountVal });
+            });
+            initialBalances[custodian] = updatedList;
+        }
+
         function renderBalanceRows(custodian) {
             const container = document.getElementById(custodian.toLowerCase() + 'BalanceRows');
             container.innerHTML = '';
@@ -315,26 +395,25 @@
                 const methodOptions = Object.keys(ACCOUNT_STANDARDS).map(m => 
                     `<option value="${m}" ${m === item.method ? 'selected' : ''}>${m}</option>`
                 ).join('');
-                
                 const destinationOptions = generateAccountOptionsHtml(item.method, item.destination);
 
                 container.innerHTML += `
                     <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200" id="row-${custodian}-${index}">
                         <div class="w-1/3">
                             <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Method</label>
-                            <select onchange="updateBalanceDestinations('${custodian}', ${index})" class="method-select w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:border-blue-500">
+                            <select onchange="updateBalanceDestinations('${custodian}', ${index})" class="method-select w-full px-2 py-1.5 border border-slate-200 rounded text-xs">
                                 ${methodOptions}
                             </select>
                         </div>
                         <div class="w-1/3">
-                            <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Account / Destination</label>
-                            <select class="dest-select w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:border-blue-500">
+                            <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Account</label>
+                            <select class="dest-select w-full px-2 py-1.5 border border-slate-200 rounded text-xs">
                                 ${destinationOptions}
                             </select>
                         </div>
                         <div class="w-1/4">
                             <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Amount ($)</label>
-                            <input type="number" step="0.01" value="${item.amount}" class="amount-input w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:border-blue-500 font-mono font-bold">
+                            <input type="number" step="0.01" value="${item.amount}" class="amount-input w-full px-2 py-1.5 border border-slate-200 rounded text-xs font-mono font-bold">
                         </div>
                         <div class="w-1/12 flex justify-center items-end pb-1">
                             <button type="button" onclick="removeBalanceRow('${custodian}', ${index})" class="text-slate-400 hover:text-rose-500 p-1">
@@ -346,57 +425,87 @@
             });
         }
 
-        // Dynamically update destinations when method changes in Initial Balances Modal
         function updateBalanceDestinations(custodian, index) {
             const row = document.getElementById(`row-${custodian}-${index}`);
             const methodSelect = row.querySelector('.method-select');
             const destSelect = row.querySelector('.dest-select');
             destSelect.innerHTML = generateAccountOptionsHtml(methodSelect.value);
+            // Save state immediately after changing dropdown to prevent loss of manual inputs
+            saveCurrentRowState(custodian); 
         }
 
         function addBalanceRow(custodian) {
+            saveCurrentRowState(custodian); // Fix: Save current DOM values to array BEFORE pushing new row
             initialBalances[custodian].push({ method: "Zelle", destination: "UNFCU", amount: 0 });
             renderBalanceRows(custodian);
         }
 
         function removeBalanceRow(custodian, index) {
+            saveCurrentRowState(custodian);
             initialBalances[custodian].splice(index, 1);
             renderBalanceRows(custodian);
         }
 
         function saveInitialBalances(event) {
             event.preventDefault();
-
-            ['Gabriel', 'Jefferson'].forEach(custodian => {
-                const container = document.getElementById(custodian.toLowerCase() + 'BalanceRows');
-                const rows = container.querySelectorAll('[id^="row-"]');
-                
-                const updatedList = [];
-                rows.forEach(row => {
-                    const methodVal = row.querySelector('.method-select').value;
-                    const destVal = row.querySelector('.dest-select').value;
-                    const amountVal = parseFloat(row.querySelector('.amount-input').value) || 0;
-                    updatedList.push({ method: methodVal, destination: destVal, amount: amountVal });
-                });
-                initialBalances[custodian] = updatedList;
-            });
-
+            saveCurrentRowState('Gabriel');
+            saveCurrentRowState('Jefferson');
             closeInitialBalanceModal();
             renderTable();
+        }
+
+        /* --- TRANSFER LOGIC --- */
+        function openTransferModal() {
+            document.getElementById('transferModal').classList.remove('hidden');
+        }
+
+        function closeTransferModal() {
+            document.getElementById('transferModal').classList.add('hidden');
+            document.getElementById('transferForm').reset();
+            document.getElementById('transferDate').valueAsDate = new Date();
+            updateTransferDestinations('From');
+            updateTransferDestinations('To');
+        }
+
+        function updateTransferDestinations(prefix) {
+            const method = document.getElementById(`transfer${prefix}Method`).value;
+            const destSelect = document.getElementById(`transfer${prefix}Account`);
+            destSelect.innerHTML = generateAccountOptionsHtml(method);
+        }
+
+        function addTransfer(event) {
+            event.preventDefault();
+            const record = {
+                id: Date.now(),
+                type: 'transfer',
+                date: document.getElementById('transferDate').value,
+                
+                fromCustodian: document.getElementById('transferFromCustodian').value,
+                fromMethod: document.getElementById('transferFromMethod').value,
+                fromAccount: document.getElementById('transferFromAccount').value,
+                
+                toCustodian: document.getElementById('transferToCustodian').value,
+                toMethod: document.getElementById('transferToMethod').value,
+                toAccount: document.getElementById('transferToAccount').value,
+                
+                usd: parseFloat(document.getElementById('transferAmount').value) || 0,
+                ves: 0
+            };
+            
+            paymentRecords.unshift(record);
+            renderTable();
+            closeTransferModal();
         }
 
         /* --- PAYMENT REGISTRATION LOGIC --- */
         function toggleMethodFields() {
             const method = document.getElementById('method').value;
             const destSelect = document.getElementById('destinationAccount');
-            
-            // Populate destinations based on standard definitions
             destSelect.innerHTML = generateAccountOptionsHtml(method);
 
             const vesAmountContainer = document.getElementById('vesAmountContainer');
             const usdInput = document.getElementById('usd');
 
-            // Handle VES vs USD logic
             if (method === 'Mobile Payment' || method === 'National Transfer') {
                 vesAmountContainer.classList.remove('hidden');
                 usdInput.readOnly = true; 
@@ -432,23 +541,18 @@
 
         function addPayment(event) {
             event.preventDefault();
-            
-            const method = document.getElementById('method').value;
-            const destination = document.getElementById('destinationAccount').value;
-            const custodian = document.getElementById('custodian').value;
-
-            const newRecord = {
+            const record = {
                 id: Date.now(),
+                type: 'payment',
                 date: document.getElementById('date').value,
                 client: document.getElementById('client').value,
-                method: method,
-                destination: destination,
-                custodian: custodian,
+                method: document.getElementById('method').value,
+                destination: document.getElementById('destinationAccount').value,
+                custodian: document.getElementById('custodian').value,
                 usd: parseFloat(document.getElementById('usd').value) || 0,
                 ves: parseFloat(document.getElementById('ves').value) || 0
             };
-            
-            paymentRecords.unshift(newRecord);
+            paymentRecords.unshift(record);
             renderTable();
             closeModal();
         }
@@ -460,13 +564,12 @@
             
             let gabrielBreakdown = {};
             let jeffersonBreakdown = {};
-            let globalBreakdown = {}; // For the Chart
+            let globalBreakdown = {}; 
             
             let totalGabrielUsd = 0;
             let totalJeffersonUsd = 0;
             let totalVes = 0;
 
-            // Helper to aggregate data
             const addToBreakdown = (custodian, method, dest, amount) => {
                 const label = `${method} (${dest})`;
                 if (custodian === 'Gabriel') {
@@ -476,50 +579,76 @@
                     jeffersonBreakdown[label] = (jeffersonBreakdown[label] || 0) + amount;
                     totalJeffersonUsd += amount;
                 }
+                // Global breakdown only cares about net positive balances across accounts
                 globalBreakdown[label] = (globalBreakdown[label] || 0) + amount;
             };
 
-            // 1. Process Initial Balances
+            // 1. Initials
             initialBalances.Gabriel.forEach(item => addToBreakdown('Gabriel', item.method, item.destination, item.amount));
             initialBalances.Jefferson.forEach(item => addToBreakdown('Jefferson', item.method, item.destination, item.amount));
 
-            // 2. Process Transactions
+            // 2. Records (Payments & Transfers)
             paymentRecords.forEach(p => {
-                totalVes += p.ves;
-                addToBreakdown(p.custodian, p.method, p.destination, p.usd);
+                if(p.type === 'transfer') {
+                    // Subtract from sender
+                    addToBreakdown(p.fromCustodian, p.fromMethod, p.fromAccount, -p.usd);
+                    // Add to receiver
+                    addToBreakdown(p.toCustodian, p.toMethod, p.toAccount, p.usd);
+                    
+                    // Render Transfer Row
+                    tbody.innerHTML += `
+                        <tr class="bg-slate-50 border-b border-slate-100">
+                            <td class="p-4 text-xs font-mono text-slate-500">${p.date}</td>
+                            <td class="p-4 font-semibold text-slate-600"><span class="bg-slate-200 text-slate-700 text-[10px] px-2 py-1 rounded uppercase tracking-wider">Internal Transfer</span></td>
+                            <td class="p-4">
+                                <div class="text-xs text-rose-500 line-through">${p.fromMethod} (${p.fromAccount})</div>
+                                <div class="text-xs text-emerald-600 font-medium mt-1">${p.toMethod} (${p.toAccount})</div>
+                            </td>
+                            <td class="p-4">
+                                <div class="text-xs text-slate-500">From: ${p.fromCustodian}</div>
+                                <div class="text-xs font-semibold text-slate-800">To: ${p.toCustodian}</div>
+                            </td>
+                            <td class="p-4 text-right font-bold text-slate-900">$${p.usd.toFixed(2)}</td>
+                            <td class="p-4 text-center text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-ellipsis"></i></td>
+                        </tr>
+                    `;
+                } else {
+                    // Standard Payment
+                    totalVes += p.ves;
+                    addToBreakdown(p.custodian, p.method, p.destination, p.usd);
 
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 border-b border-slate-50">
-                        <td class="p-4 text-xs font-mono text-slate-500">${p.date}</td>
-                        <td class="p-4 font-semibold text-slate-700">${p.client}</td>
-                        <td class="p-4">
-                            <div class="text-sm font-medium text-slate-800">${p.method}</div>
-                            <div class="text-xs text-slate-500 mt-0.5">${p.destination}</div>
-                        </td>
-                        <td class="p-4">
-                            <span class="px-2 py-1 rounded text-xs font-semibold ${p.custodian === 'Gabriel' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'}">
-                                ${p.custodian}
-                            </span>
-                        </td>
-                        <td class="p-4 text-right font-bold text-slate-900">$${p.usd.toFixed(2)}</td>
-                        <td class="p-4 text-center text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-ellipsis"></i></td>
-                    </tr>
-                `;
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 border-b border-slate-50">
+                            <td class="p-4 text-xs font-mono text-slate-500">${p.date}</td>
+                            <td class="p-4 font-semibold text-slate-700">${p.client}</td>
+                            <td class="p-4">
+                                <div class="text-sm font-medium text-slate-800">${p.method}</div>
+                                <div class="text-xs text-slate-500 mt-0.5">${p.destination}</div>
+                            </td>
+                            <td class="p-4">
+                                <span class="px-2 py-1 rounded text-xs font-semibold ${p.custodian === 'Gabriel' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'}">
+                                    ${p.custodian}
+                                </span>
+                            </td>
+                            <td class="p-4 text-right font-bold text-slate-900">$${p.usd.toFixed(2)}</td>
+                            <td class="p-4 text-center text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-solid fa-ellipsis"></i></td>
+                        </tr>
+                    `;
+                }
             });
 
-            // Update UI Cards
+            // Update KPI
             const grandTotalUsd = totalGabrielUsd + totalJeffersonUsd;
             document.getElementById('kpi-usd').innerText = `$${grandTotalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('kpi-ves').innerText = `Bs ${totalVes.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('kpi-gabriel').innerText = `$${totalGabrielUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('kpi-jefferson').innerText = `$${totalJeffersonUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
-            // Update Breakdown Panel
+            // Breakdowns
             renderBreakdownList('gabriel', gabrielBreakdown, totalGabrielUsd);
             renderBreakdownList('jefferson', jeffersonBreakdown, totalJeffersonUsd);
             document.getElementById('chart-center-total').innerText = `$${grandTotalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
-            // Update Chart
             updateChart(globalBreakdown);
         }
 
@@ -529,14 +658,12 @@
             container.innerHTML = '';
 
             const keys = Object.keys(breakdownObj);
-            if(keys.length === 0) {
-                container.innerHTML = `<span class="text-slate-400 italic">No funds registered</span>`;
-                return;
-            }
-
+            let hasData = false;
+            
             keys.forEach(key => {
                 const val = breakdownObj[key];
                 if (val > 0) {
+                    hasData = true;
                     container.innerHTML += `
                         <div class="flex justify-between items-center py-1 border-b border-slate-100 last:border-0">
                             <span class="font-medium text-slate-600 truncate mr-2" title="${key}">${key}</span>
@@ -545,28 +672,18 @@
                     `;
                 }
             });
+
+            if(!hasData) container.innerHTML = `<span class="text-slate-400 italic">No funds registered</span>`;
         }
 
         function updateChart(dataObj) {
             const ctx = document.getElementById('distributionChart').getContext('2d');
-            
             const labels = Object.keys(dataObj).filter(k => dataObj[k] > 0);
             const data = labels.map(k => dataObj[k]);
 
-            // Tailwind specific colors corresponding to app theme
-            const bgColors = [
-                '#2563eb', // blue-600
-                '#4f46e5', // indigo-600
-                '#059669', // emerald-600
-                '#d97706', // amber-600
-                '#0ea5e9', // sky-500
-                '#8b5cf6', // violet-500
-                '#10b981'  // emerald-500
-            ];
+            const bgColors = ['#2563eb', '#4f46e5', '#059669', '#d97706', '#0ea5e9', '#8b5cf6', '#10b981'];
 
-            if(myChart) {
-                myChart.destroy();
-            }
+            if(myChart) myChart.destroy();
 
             myChart = new Chart(ctx, {
                 type: 'doughnut',
@@ -576,34 +693,14 @@
                         data: data.length ? data : [1],
                         backgroundColor: data.length ? bgColors.slice(0, data.length) : ['#e2e8f0'],
                         borderWidth: 2,
-                        borderColor: '#ffffff',
-                        hoverOffset: 4
+                        borderColor: '#ffffff'
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '75%', // Makes it a thin donut for the center text
-                    plugins: {
-                        legend: {
-                            display: false // Hidden to keep it clean, data is detailed in the panels next to it
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    if(!data.length) return ' No Funds';
-                                    let label = context.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.parsed !== null) {
-                                        label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    }
+                    cutout: '75%',
+                    plugins: { legend: { display: false } }
                 }
             });
         }
