@@ -114,7 +114,7 @@
                         <tr>
                             <th class="p-4 rounded-tl-lg">Date</th>
                             <th class="p-4">Client / Type</th>
-                            <th class="p-4">Methods & Accounts (Swap)</th>
+                            <th class="p-4">Methods & Accounts</th>
                             <th class="p-4">Custodians</th>
                             <th class="p-4 text-right">Amount (USD)</th>
                             <th class="p-4 text-center rounded-tr-lg">Actions</th>
@@ -246,11 +246,11 @@
         </div>
     </div>
 
-    <!-- Internal Transfer Modal Form (Swap / Note Enabled) -->
+    <!-- Internal Transfer Modal Form (Single Channel / Note Enabled) -->
     <div id="transferModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 custom-scrollbar">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 custom-scrollbar">
             <div class="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-100 sticky top-0 z-10">
-                <h3 class="text-lg font-bold text-slate-800">Register Internal Transfer / Swap</h3>
+                <h3 class="text-lg font-bold text-slate-800">Register Internal Transfer Between Custodians</h3>
                 <button onclick="closeTransferModal()" class="text-slate-400 hover:text-rose-500 transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
@@ -262,86 +262,55 @@
                     <input type="date" id="transferDate" required class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-slate-500">
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Sender Section -->
-                    <div class="border border-slate-200 rounded-xl p-4 bg-white shadow-sm relative">
-                        <div class="absolute -top-3 left-4 bg-white px-2 text-xs font-bold text-slate-800 flex items-center gap-1">
-                            <i class="fa-solid fa-arrow-up-right-from-square text-rose-500"></i> Sender (Outgoing)
-                        </div>
-                        <div class="space-y-4 mt-2">
-                            <div>
-                                <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custodian</label>
-                                <select id="transferSender" onchange="autoSwitchReceiver()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
-                                    <option value="Jefferson">Jefferson</option>
-                                    <option value="Gabriel">Gabriel</option>
-                                </select>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Method</label>
-                                    <select id="transferSenderMethod" onchange="updateTransferDestinations('Sender')" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
-                                        <option value="Zelle">Zelle</option>
-                                        <option value="Binance USDT">Binance USDT</option>
-                                        <option value="Cash USD">Cash USD</option>
-                                        <option value="National USD Account">National USD Account</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Account</label>
-                                    <select id="transferSenderAccount" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"></select>
-                                </div>
-                            </div>
-                        </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Sender (Outgoing Custodian)</label>
+                        <select id="transferSender" onchange="autoSwitchReceiver()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm">
+                            <option value="Jefferson">Jefferson</option>
+                            <option value="Gabriel">Gabriel</option>
+                        </select>
                     </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Receiver (Incoming Custodian)</label>
+                        <select id="transferReceiver" onchange="autoSwitchSender()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm">
+                            <option value="Gabriel">Gabriel</option>
+                            <option value="Jefferson">Jefferson</option>
+                        </select>
+                    </div>
+                </div>
 
-                    <!-- Receiver Section -->
-                    <div class="border border-slate-200 rounded-xl p-4 bg-white shadow-sm relative">
-                        <div class="absolute -top-3 left-4 bg-white px-2 text-xs font-bold text-slate-800 flex items-center gap-1">
-                            <i class="fa-solid fa-arrow-right-to-bracket text-emerald-500"></i> Receiver (Incoming)
-                        </div>
-                        <div class="space-y-4 mt-2">
-                            <div>
-                                <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custodian</label>
-                                <select id="transferReceiver" onchange="autoSwitchSender()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
-                                    <option value="Gabriel">Gabriel</option>
-                                    <option value="Jefferson">Jefferson</option>
-                                </select>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Method</label>
-                                    <select id="transferReceiverMethod" onchange="updateTransferDestinations('Receiver')" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
-                                        <option value="Zelle">Zelle</option>
-                                        <option value="Binance USDT">Binance USDT</option>
-                                        <option value="Cash USD">Cash USD</option>
-                                        <option value="National USD Account">National USD Account</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] uppercase font-bold text-slate-400 mb-1">Account</label>
-                                    <select id="transferReceiverAccount" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"></select>
-                                </div>
-                            </div>
-                        </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Transfer Method / Channel</label>
+                        <select id="transferMethod" onchange="updateTransferDestinations()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm">
+                            <option value="Zelle">Zelle</option>
+                            <option value="Binance USDT">Binance USDT</option>
+                            <option value="Cash USD">Cash USD</option>
+                            <option value="National USD Account">National USD Account</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Account Destination</label>
+                        <select id="transferAccount" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm"></select>
                     </div>
                 </div>
 
                 <!-- Amount and Notes -->
                 <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Swap / Transfer Amount (USD)</label>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Transfer Amount (USD)</label>
                         <div class="flex gap-2">
                             <input type="number" step="0.01" id="transferAmount" required class="flex-1 px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-700 font-bold font-mono bg-white" value="0">
                             <button type="button" onclick="setMaxTransfer()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-lg transition-colors" title="Load maximum available total for the Sender">
                                 MAX
                             </button>
                         </div>
-                        <p class="text-[10px] text-slate-500 mt-1">Click MAX to load the sender's total accumulated funds.</p>
+                        <p class="text-[10px] text-slate-500 mt-1">Click MAX to load the sender's total available funds safely without going negative.</p>
                     </div>
 
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Notes / Reason for Transfer</label>
-                        <textarea id="transferNotes" rows="2" placeholder="e.g. Swapped Cash for Binance to pay provider X" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-slate-500"></textarea>
+                        <textarea id="transferNotes" rows="2" placeholder="e.g. Moved funds to cover digital supplier payments via Binance" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-slate-500"></textarea>
                     </div>
                 </div>
 
@@ -371,8 +340,7 @@
             document.getElementById('date').valueAsDate = new Date();
             document.getElementById('transferDate').valueAsDate = new Date();
             toggleMethodFields(); 
-            updateTransferDestinations('Sender');
-            updateTransferDestinations('Receiver');
+            updateTransferDestinations();
             renderTable();
         });
 
@@ -484,13 +452,12 @@
             document.getElementById('transferModal').classList.add('hidden');
             document.getElementById('transferForm').reset();
             document.getElementById('transferDate').valueAsDate = new Date();
-            updateTransferDestinations('Sender');
-            updateTransferDestinations('Receiver');
+            updateTransferDestinations();
         }
 
-        function updateTransferDestinations(type) {
-            const method = document.getElementById(`transfer${type}Method`).value;
-            const destSelect = document.getElementById(`transfer${type}Account`);
+        function updateTransferDestinations() {
+            const method = document.getElementById('transferMethod').value;
+            const destSelect = document.getElementById('transferAccount');
             destSelect.innerHTML = generateAccountOptionsHtml(method);
         }
 
@@ -515,7 +482,7 @@
                     if (p.custodian === custodian) total += p.usd;
                 }
             });
-            return total;
+            return Math.max(0, total);
         }
 
         function setMaxTransfer() {
@@ -526,17 +493,25 @@
 
         function addTransfer(event) {
             event.preventDefault();
+            const sender = document.getElementById('transferSender').value;
+            const requestedAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
+            const senderAvailable = getCustodianTotal(sender);
+
+            // Robust balance enforcement: Never allow transfer greater than available balance to prevent negative accounts
+            const finalAmount = Math.min(requestedAmount, senderAvailable);
+
+            const method = document.getElementById('transferMethod').value;
+            const account = document.getElementById('transferAccount').value;
+
             const record = {
                 id: Date.now(),
                 type: 'transfer',
                 date: document.getElementById('transferDate').value,
-                sender: document.getElementById('transferSender').value,
-                senderMethod: document.getElementById('transferSenderMethod').value,
-                senderAccount: document.getElementById('transferSenderAccount').value,
+                sender: sender,
                 receiver: document.getElementById('transferReceiver').value,
-                receiverMethod: document.getElementById('transferReceiverMethod').value,
-                receiverAccount: document.getElementById('transferReceiverAccount').value,
-                usd: parseFloat(document.getElementById('transferAmount').value) || 0,
+                method: method,
+                account: account,
+                usd: finalAmount,
                 notes: document.getElementById('transferNotes').value.trim(),
                 ves: 0
             };
@@ -638,8 +613,9 @@
             // 2. Records (Payments & Transfers)
             paymentRecords.forEach(p => {
                 if(p.type === 'transfer') {
-                    addToBreakdown(p.sender, p.senderMethod, p.senderAccount, -p.usd);
-                    addToBreakdown(p.receiver, p.receiverMethod, p.receiverAccount, p.usd);
+                    // Single channel internal transfer: subtract from sender bucket, add to receiver bucket using same method/account
+                    addToBreakdown(p.sender, p.method, p.account, -p.usd);
+                    addToBreakdown(p.receiver, p.method, p.account, p.usd);
                     
                     const notesHtml = p.notes ? `<div class="mt-2 text-[10px] text-slate-500 bg-white/50 px-2 py-1 rounded border border-slate-200 italic shadow-sm flex items-start gap-1 w-fit max-w-xs whitespace-normal"><i class="fa-solid fa-note-sticky mt-0.5 text-amber-500"></i> ${p.notes}</div>` : '';
 
@@ -647,27 +623,15 @@
                         <tr class="bg-blue-50/20 border-b border-slate-100">
                             <td class="p-4 text-xs font-mono text-slate-500 align-top">${p.date}</td>
                             <td class="p-4 align-top">
-                                <span class="bg-slate-200 text-slate-700 text-[10px] px-2 py-1 rounded uppercase tracking-wider font-semibold">Internal Transfer / Swap</span>
+                                <span class="bg-slate-200 text-slate-700 text-[10px] px-2 py-1 rounded uppercase tracking-wider font-semibold">Internal Transfer</span>
                                 ${notesHtml}
                             </td>
                             <td class="p-4 align-top">
-                                <div class="flex items-center gap-2 mb-1">
-                                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-rose-400"></i>
-                                    <div>
-                                        <div class="text-xs font-medium text-slate-800 line-through decoration-rose-300">${p.senderMethod}</div>
-                                        <div class="text-[10px] text-slate-500 line-through decoration-rose-300">${p.senderAccount}</div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <i class="fa-solid fa-arrow-right-to-bracket text-[10px] text-emerald-500"></i>
-                                    <div>
-                                        <div class="text-xs font-medium text-emerald-700">${p.receiverMethod}</div>
-                                        <div class="text-[10px] text-emerald-600">${p.receiverAccount}</div>
-                                    </div>
-                                </div>
+                                <div class="text-sm font-medium text-slate-800">${p.method}</div>
+                                <div class="text-xs text-slate-500 mt-0.5">${p.account}</div>
                             </td>
                             <td class="p-4 align-top">
-                                <div class="text-xs text-slate-500 line-through decoration-rose-300 mb-2">From: ${p.sender}</div>
+                                <div class="text-xs text-rose-600 mb-1">From: <span class="font-semibold">${p.sender}</span></div>
                                 <div class="text-xs font-semibold text-emerald-700">To: ${p.receiver}</div>
                             </td>
                             <td class="p-4 text-right font-bold text-slate-900 align-top">$${p.usd.toFixed(2)}</td>
@@ -699,6 +663,10 @@
                 }
             });
 
+            // Prevent precision floating point bugs or display guards ensuring no negative balances are shown
+            totalGabrielUsd = Math.max(0, totalGabrielUsd);
+            totalJeffersonUsd = Math.max(0, totalJeffersonUsd);
+
             // Update KPI
             const grandTotalUsd = totalGabrielUsd + totalJeffersonUsd;
             document.getElementById('kpi-usd').innerText = `$${grandTotalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -706,7 +674,7 @@
             document.getElementById('kpi-gabriel').innerText = `$${totalGabrielUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('kpi-jefferson').innerText = `$${totalJeffersonUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
-            // Breakdowns
+            // Breakdowns & Dynamic Chart Updates
             renderBreakdownList('gabriel', gabrielBreakdown, totalGabrielUsd);
             renderBreakdownList('jefferson', jeffersonBreakdown, totalJeffersonUsd);
             document.getElementById('chart-center-total').innerText = `$${grandTotalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -723,17 +691,13 @@
             let hasData = false;
             
             keys.forEach(key => {
-                const val = breakdownObj[key];
-                if (Math.abs(val) > 0.005) {
+                const val = Math.max(0, breakdownObj[key]); // enforce non-negative constraint display floors at 0
+                if (val > 0.005) {
                     hasData = true;
-                    const isNegative = val < 0;
-                    const colorClass = isNegative ? 'text-rose-500' : 'text-slate-800';
-                    const sign = isNegative ? '-' : '';
-                    
                     container.innerHTML += `
                         <div class="flex justify-between items-center py-1 border-b border-slate-100 last:border-0">
-                            <span class="font-medium ${isNegative ? 'text-rose-400' : 'text-slate-600'} truncate mr-2" title="${key}">${key}</span>
-                            <span class="font-bold ${colorClass} font-mono">${sign}$${Math.abs(val).toFixed(2)}</span>
+                            <span class="font-medium text-slate-600 truncate mr-2" title="${key}">${key}</span>
+                            <span class="font-bold text-slate-800 font-mono">$${val.toFixed(2)}</span>
                         </div>
                     `;
                 }
@@ -745,8 +709,10 @@
         function updateChart(dataObj) {
             const ctx = document.getElementById('distributionChart').getContext('2d');
             
-            const labels = Object.keys(dataObj).filter(k => dataObj[k] > 0.005);
-            const data = labels.map(k => dataObj[k]);
+            // Clean zero or negative values out of the chart breakdown dataset
+            const filteredKeys = Object.keys(dataObj).filter(k => dataObj[k] > 0.005);
+            const labels = filteredKeys.length ? filteredKeys : ['No Data'];
+            const data = filteredKeys.length ? filteredKeys.map(k => dataObj[k]) : [1];
 
             const bgColors = ['#2563eb', '#4f46e5', '#059669', '#d97706', '#0ea5e9', '#8b5cf6', '#10b981'];
 
@@ -755,10 +721,10 @@
             myChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: labels.length ? labels : ['No Data'],
+                    labels: labels,
                     datasets: [{
-                        data: data.length ? data : [1],
-                        backgroundColor: data.length ? bgColors.slice(0, data.length) : ['#e2e8f0'],
+                        data: data,
+                        backgroundColor: bgColors.slice(0, data.length),
                         borderWidth: 2,
                         borderColor: '#ffffff'
                     }]
