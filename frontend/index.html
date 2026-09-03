@@ -185,12 +185,6 @@
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Method</label>
                         <select id="method" onchange="toggleMethodFields()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                            <option value="Zelle">Zelle</option>
-                            <option value="Binance USDT">Binance USDT</option>
-                            <option value="Cash USD">Cash USD</option>
-                            <option value="National USD Account">National USD Account (Bancamiga, etc.)</option>
-                            <option value="Mobile Payment">Mobile Payment (Pago Móvil)</option>
-                            <option value="National Transfer">National Transfer (VES)</option>
                         </select>
                     </div>
                     <div>
@@ -283,10 +277,6 @@
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 mb-1">Transfer Method / Channel</label>
                         <select id="transferMethod" onchange="updateTransferDestinations()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm">
-                            <option value="Zelle">Zelle</option>
-                            <option value="Binance USDT">Binance USDT</option>
-                            <option value="Cash USD">Cash USD</option>
-                            <option value="National USD Account">National USD Account</option>
                         </select>
                     </div>
                     <div>
@@ -353,13 +343,42 @@
             "National Transfer": VES_BANKS
         };
 
+        // Single source of truth for how each method is displayed. Used by the
+        // Payment modal, the Initial Balances modal, and the Transfer modal alike —
+        // change a label here once and it updates everywhere, no more drift.
+        const METHOD_LABELS = {
+            "Zelle": "Zelle",
+            "Binance USDT": "Binance USDT",
+            "Cash USD": "Cash USD",
+            "National USD Account": "National USD Account (Bancamiga, etc.)",
+            "Mobile Payment": "Mobile Payment (Pago Móvil)",
+            "National Transfer": "National Transfer (VES)"
+        };
+
+        // Only these methods represent USD custody buckets that can be moved
+        // between Gabriel and Jefferson internally (VES methods aren't transferable here).
+        const TRANSFERABLE_METHODS = ["Zelle", "Binance USDT", "Cash USD", "National USD Account"];
+
         let initialBalances = { Gabriel: [], Jefferson: [] };
         let paymentRecords = [];
         let myChart = null;
 
+        function populateMethodSelects() {
+            const methodSelect = document.getElementById('method');
+            methodSelect.innerHTML = Object.keys(ACCOUNT_STANDARDS).map(m =>
+                `<option value="${m}">${METHOD_LABELS[m] || m}</option>`
+            ).join('');
+
+            const transferMethodSelect = document.getElementById('transferMethod');
+            transferMethodSelect.innerHTML = TRANSFERABLE_METHODS.map(m =>
+                `<option value="${m}">${METHOD_LABELS[m] || m}</option>`
+            ).join('');
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('date').valueAsDate = new Date();
             document.getElementById('transferDate').valueAsDate = new Date();
+            populateMethodSelects();
             toggleMethodFields(); 
             updateTransferDestinations();
             renderTable();
@@ -404,7 +423,7 @@
 
             initialBalances[custodian].forEach((item, index) => {
                 const methodOptions = Object.keys(ACCOUNT_STANDARDS).map(m => 
-                    `<option value="${m}" ${m === item.method ? 'selected' : ''}>${m}</option>`
+                    `<option value="${m}" ${m === item.method ? 'selected' : ''}>${METHOD_LABELS[m] || m}</option>`
                 ).join('');
                 const destinationOptions = generateAccountOptionsHtml(item.method, item.destination);
 
