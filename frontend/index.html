@@ -201,18 +201,18 @@
 
                 <div id="dynamicDestinationContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div id="destinationAccountWrapper">
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Destination Account</label>
-                        <select id="destinationAccount" onchange="syncCustodianFromAccount()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Destination Account / Channel</label>
+                        <select id="destinationAccount" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                         </select>
-                        <p class="text-[10px] text-slate-400 mt-1">Each account belongs to one custodian — pick the real account it went into.</p>
+                        <p class="text-[10px] text-slate-400 mt-1">The bank or channel the money moved through.</p>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1" id="custodianLabel">Custodian (auto-linked to account)</label>
-                        <select id="custodian" disabled class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 bg-slate-100 text-slate-600">
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Custodian (Who receives it)</label>
+                        <select id="custodian" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                             <option value="Gabriel">Gabriel</option>
                             <option value="Jefferson">Jefferson</option>
                         </select>
-                        <p id="custodianHint" class="text-[10px] text-slate-400 mt-1"><i class="fa-solid fa-lock"></i> Derived from the account above — edit account ownership in the code's ACCOUNT_STANDARDS list.</p>
+                        <p class="text-[10px] text-slate-400 mt-1">Independent from the account — either custodian can use any bank.</p>
                     </div>
                 </div>
 
@@ -323,38 +323,16 @@
     </div>
 
     <script>
-        // ⚠️ SOURCE OF TRUTH FOR OWNERSHIP: every destination account lists the custodian
-        // who really owns it. Edit the "custodian" value on each line to match reality —
-        // this is what lets the form auto-detect the custodian instead of guessing.
-        // "Cash USD" (and any method with an empty array) skips the account step entirely
-        // and just asks who physically received the cash.
+        // Bank/channel list only — deliberately NOT tied to a fixed custodian.
+        // Both Gabriel and Jefferson can hold an account at the same bank, so the
+        // account list and the custodian are two independent choices in the form.
         const ACCOUNT_STANDARDS = {
-            "Zelle": [
-                { label: "UNFCU", custodian: "Gabriel" },
-                { label: "Bank of America", custodian: "Jefferson" }
-            ],
-            "Binance USDT": [
-                { label: "Binance Wallet", custodian: "Gabriel" }
-            ],
+            "Zelle": ["UNFCU", "Bank of America"],
+            "Binance USDT": ["Binance Wallet"],
             "Cash USD": [],
-            "National USD Account": [
-                { label: "0172 - BANCAMIGA (Cash USD)", custodian: "Gabriel" },
-                { label: "0134 - BANESCO (Cuenta Verde)", custodian: "Jefferson" },
-                { label: "0105 - MERCANTIL (Divisas)", custodian: "Gabriel" },
-                { label: "0191 - BNC (M.E.)", custodian: "Jefferson" }
-            ],
-            "Mobile Payment": [
-                { label: "0102 - BANCO DE VENEZUELA", custodian: "Gabriel" },
-                { label: "0134 - BANESCO", custodian: "Jefferson" },
-                { label: "0105 - MERCANTIL", custodian: "Gabriel" },
-                { label: "0108 - PROVINCIAL", custodian: "Jefferson" }
-            ],
-            "National Transfer": [
-                { label: "0102 - BANCO DE VENEZUELA", custodian: "Gabriel" },
-                { label: "0134 - BANESCO", custodian: "Jefferson" },
-                { label: "0105 - MERCANTIL", custodian: "Gabriel" },
-                { label: "0108 - PROVINCIAL", custodian: "Jefferson" }
-            ]
+            "National USD Account": ["0172 - BANCAMIGA (Cash USD)", "0134 - BANESCO (Cuenta Verde)", "0105 - MERCANTIL (Divisas)", "0191 - BNC (M.E.)"],
+            "Mobile Payment": ["0102 - BANCO DE VENEZUELA", "0134 - BANESCO", "0105 - MERCANTIL", "0108 - PROVINCIAL"],
+            "National Transfer": ["0102 - BANCO DE VENEZUELA", "0134 - BANESCO", "0105 - MERCANTIL", "0108 - PROVINCIAL"]
         };
 
         let initialBalances = { Gabriel: [], Jefferson: [] };
@@ -370,31 +348,10 @@
         });
 
         function generateAccountOptionsHtml(methodStr, selectedValue = "") {
-            const accounts = ACCOUNT_STANDARDS[methodStr] || [];
-            return accounts.map(acc => 
-                `<option value="${acc.label}" data-custodian="${acc.custodian}" ${acc.label === selectedValue ? 'selected' : ''}>${acc.label}</option>`
+            const destinations = ACCOUNT_STANDARDS[methodStr] || [];
+            return destinations.map(dest => 
+                `<option value="${dest}" ${dest === selectedValue ? 'selected' : ''}>${dest}</option>`
             ).join('');
-        }
-
-        // Same as above but restricted to accounts owned by one custodian — used in
-        // Initial Balances, where each row already lives inside a specific custodian's section.
-        function generateOwnerAccountOptionsHtml(methodStr, custodian, selectedValue = "") {
-            const accounts = (ACCOUNT_STANDARDS[methodStr] || []).filter(acc => acc.custodian === custodian);
-            if (accounts.length === 0) {
-                return `<option value="Physical Cash">Physical Cash</option>`;
-            }
-            return accounts.map(acc => 
-                `<option value="${acc.label}" ${acc.label === selectedValue ? 'selected' : ''}>${acc.label}</option>`
-            ).join('');
-        }
-
-        // Reads the data-custodian of whichever account is currently selected in the
-        // payment form and pushes it into the (disabled) Custodian field.
-        function syncCustodianFromAccount() {
-            const destSelect = document.getElementById('destinationAccount');
-            const selectedOption = destSelect.options[destSelect.selectedIndex];
-            const custodian = selectedOption ? selectedOption.dataset.custodian : null;
-            if (custodian) document.getElementById('custodian').value = custodian;
         }
 
         /* --- INITIAL BALANCE LOGIC --- */
@@ -431,7 +388,7 @@
                 const methodOptions = Object.keys(ACCOUNT_STANDARDS).map(m => 
                     `<option value="${m}" ${m === item.method ? 'selected' : ''}>${m}</option>`
                 ).join('');
-                const destinationOptions = generateOwnerAccountOptionsHtml(item.method, custodian, item.destination);
+                const destinationOptions = generateAccountOptionsHtml(item.method, item.destination);
 
                 container.innerHTML += `
                     <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200" id="row-${custodian}-${index}">
@@ -465,15 +422,13 @@
             const row = document.getElementById(`row-${custodian}-${index}`);
             const methodSelect = row.querySelector('.method-select');
             const destSelect = row.querySelector('.dest-select');
-            destSelect.innerHTML = generateOwnerAccountOptionsHtml(methodSelect.value, custodian);
+            destSelect.innerHTML = generateAccountOptionsHtml(methodSelect.value);
             saveCurrentRowState(custodian); 
         }
 
         function addBalanceRow(custodian) {
             saveCurrentRowState(custodian); 
-            const zelleAccounts = ACCOUNT_STANDARDS['Zelle'].filter(a => a.custodian === custodian);
-            const defaultDestination = zelleAccounts.length > 0 ? zelleAccounts[0].label : 'Physical Cash';
-            initialBalances[custodian].push({ method: "Zelle", destination: defaultDestination, amount: 0 });
+            initialBalances[custodian].push({ method: "Zelle", destination: "UNFCU", amount: 0 });
             renderBalanceRows(custodian);
         }
 
@@ -575,9 +530,6 @@
             const accounts = ACCOUNT_STANDARDS[method] || [];
             const destSelect = document.getElementById('destinationAccount');
             const destWrapper = document.getElementById('destinationAccountWrapper');
-            const custodianSelect = document.getElementById('custodian');
-            const custodianLabel = document.getElementById('custodianLabel');
-            const custodianHint = document.getElementById('custodianHint');
 
             destSelect.innerHTML = generateAccountOptionsHtml(method);
 
@@ -595,21 +547,12 @@
                 document.getElementById('ves').value = 0;
             }
 
+            // Cash has no bank/channel to pick — everything else does. The Custodian
+            // field stays independent and editable no matter which method is selected.
             if (accounts.length === 0) {
-                // Cash-style method: no account to pick, so the custodian is chosen directly.
                 destWrapper.classList.add('hidden');
-                custodianSelect.disabled = false;
-                custodianSelect.classList.remove('bg-slate-100', 'text-slate-600');
-                custodianLabel.innerText = 'Custodian (who physically received it)';
-                custodianHint.classList.add('hidden');
             } else {
-                // Account-based method: the account decides who the custodian is.
                 destWrapper.classList.remove('hidden');
-                custodianSelect.disabled = true;
-                custodianSelect.classList.add('bg-slate-100', 'text-slate-600');
-                custodianLabel.innerText = 'Custodian (auto-linked to account)';
-                custodianHint.classList.remove('hidden');
-                syncCustodianFromAccount();
             }
         }
 
