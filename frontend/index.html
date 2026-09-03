@@ -189,7 +189,7 @@
                             <option value="Binance USDT">Binance USDT</option>
                             <option value="Cash USD">Cash USD</option>
                             <option value="National USD Account">National USD Account (Bancamiga, etc.)</option>
-                            <option value="Mobile Payment">Mobile Payment (VES)</option>
+                            <option value="Mobile Payment">Mobile Payment (Pago Móvil)</option>
                             <option value="National Transfer">National Transfer (VES)</option>
                         </select>
                     </div>
@@ -323,6 +323,24 @@
     </div>
 
     <script>
+        // Full list of Venezuelan banks (VES) — Mobile Payment and National Transfer
+        // both point to this SAME array on purpose, so they can never drift apart.
+        // If you need to add/remove a bank, edit it here once and both methods update.
+        const VES_BANKS = [
+            "0102 - BANCO DE VENEZUELA",
+            "0104 - BANCO VENEZOLANO DE CREDITO",
+            "0105 - MERCANTIL",
+            "0108 - PROVINCIAL",
+            "0114 - BANCARIBE",
+            "0115 - BANCO EXTERIOR",
+            "0134 - BANESCO",
+            "0156 - 100% BANCO",
+            "0163 - BANCO DEL TESORO",
+            "0172 - BANCAMIGA",
+            "0175 - BANCO DIGITAL DE LOS TRABAJADORES",
+            "0191 - BNC"
+        ];
+
         // Bank/channel list only — deliberately NOT tied to a fixed custodian.
         // Both Gabriel and Jefferson can hold an account at the same bank, so the
         // account list and the custodian are two independent choices in the form.
@@ -331,8 +349,8 @@
             "Binance USDT": ["Binance Wallet"],
             "Cash USD": [],
             "National USD Account": ["0172 - BANCAMIGA (Cash USD)", "0134 - BANESCO (Cuenta Verde)", "0105 - MERCANTIL (Divisas)", "0191 - BNC (M.E.)"],
-            "Mobile Payment": ["0102 - BANCO DE VENEZUELA", "0134 - BANESCO", "0105 - MERCANTIL", "0108 - PROVINCIAL"],
-            "National Transfer": ["0102 - BANCO DE VENEZUELA", "0134 - BANESCO", "0105 - MERCANTIL", "0108 - PROVINCIAL"]
+            "Mobile Payment": VES_BANKS,
+            "National Transfer": VES_BANKS
         };
 
         let initialBalances = { Gabriel: [], Jefferson: [] };
