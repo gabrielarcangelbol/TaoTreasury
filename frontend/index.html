@@ -12,6 +12,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -45,6 +47,7 @@
                 <span class="bg-blue-600 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">Phase 1: Payment Audit</span>
                 <h1 class="text-2xl font-bold mt-3">Reconciliation & Treasury Module</h1>
                 <p class="text-slate-400 text-sm mt-1">Dynamic balance control, custody accounts, and multi-currency flow</p>
+                <p id="syncStatus" class="text-xs mt-2 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin"></i> Connecting to database...</p>
             </div>
             <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                 <button onclick="openInitialBalanceModal()" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 shadow-sm">
@@ -215,6 +218,11 @@
                     <input type="text" id="client" required placeholder="Name or Company" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
                 </div>
 
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Receipt Attachment (optional)</label>
+                    <input type="file" id="receipt" accept="image/*,.pdf" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600">
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-100">
                     <div id="vesAmountContainer" class="col-span-2 grid grid-cols-2 gap-4 hidden">
                         <div>
@@ -363,6 +371,110 @@
         let paymentRecords = [];
         let myChart = null;
 
+        /* --- SUPABASE CONNECTION --- */
+        const SUPABASE_URL = 'https://xgfyljrpxnoietzwerte.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhnZnlsanJweG5vaWV0endlcnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzOTE5NjksImV4cCI6MjEwMzk2Nzk2OX0.5P2BT8AWIyU6LS_ecGpQb6t2gNmhGqRpTMunTp7FyYo';
+        const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function setSyncStatus(state, message) {
+            const el = document.getElementById('syncStatus');
+            const icons = {
+                loading: '<i class="fa-solid fa-circle-notch fa-spin"></i>',
+                ok: '<i class="fa-solid fa-circle-check text-emerald-400"></i>',
+                error: '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i>'
+            };
+            el.innerHTML = `${icons[state] || ''} ${message}`;
+        }
+
+        // Pulls both tables from Supabase and repopulates the in-memory
+        // paymentRecords / initialBalances arrays that the rest of the app
+        // already knows how to render.
+        async function loadAllData() {
+            setSyncStatus('loading', 'Loading data from database...');
+            try {
+                const [paymentsRes, balancesRes] = await Promise.all([
+                    db.from('payments').select('*').order('date', { ascending: false }).order('id', { ascending: false }),
+                    db.from('initial_balances').select('*')
+                ]);
+
+                if (paymentsRes.error) throw paymentsRes.error;
+                if (balancesRes.error) throw balancesRes.error;
+
+                paymentRecords = paymentsRes.data.map(row => ({
+                    id: row.id,
+                    type: row.type,
+                    date: row.date,
+                    client: row.client,
+                    method: row.method,
+                    destination: row.destination,
+                    custodian: row.custodian,
+                    sender: row.sender,
+                    receiver: row.receiver,
+                    account: row.account,
+                    notes: row.notes,
+                    usd: parseFloat(row.usd) || 0,
+                    ves: parseFloat(row.ves) || 0,
+                    receiptPath: row.receipt_url
+                }));
+
+                initialBalances = { Gabriel: [], Jefferson: [] };
+                balancesRes.data.forEach(row => {
+                    initialBalances[row.custodian].push({
+                        id: row.id,
+                        method: row.method,
+                        destination: row.destination,
+                        amount: parseFloat(row.amount) || 0
+                    });
+                });
+
+                setSyncStatus('ok', 'Synced with database');
+                renderTable();
+            } catch (err) {
+                console.error('loadAllData error:', err);
+                setSyncStatus('error', 'Could not reach the database — showing empty state');
+            }
+        }
+
+        async function insertRecord(record) {
+            const { error } = await db.from('payments').insert([record]);
+            if (error) throw error;
+        }
+
+        // Simplest consistent strategy: wipe both custodians' rows and
+        // re-insert whatever is currently in the form. Small dataset (a
+        // handful of accounts), so this is cheap and avoids diffing bugs.
+        async function persistInitialBalances() {
+            const { error: deleteError } = await db.from('initial_balances').delete().gt('id', 0);
+            if (deleteError) throw deleteError;
+
+            const rows = [
+                ...initialBalances.Gabriel.map(item => ({ custodian: 'Gabriel', method: item.method, destination: item.destination, amount: item.amount })),
+                ...initialBalances.Jefferson.map(item => ({ custodian: 'Jefferson', method: item.method, destination: item.destination, amount: item.amount }))
+            ];
+            if (rows.length > 0) {
+                const { error: insertError } = await db.from('initial_balances').insert(rows);
+                if (insertError) throw insertError;
+            }
+        }
+
+        // Uploads the receipt to the private "receipts" bucket and returns the
+        // storage path (not a public URL, since the bucket is private).
+        async function uploadReceipt(file) {
+            if (!file) return null;
+            const path = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+            const { error } = await db.storage.from('receipts').upload(path, file);
+            if (error) throw error;
+            return path;
+        }
+
+        // Generates a temporary signed link to view a receipt on demand
+        // (private bucket, so links must be signed and expire).
+        async function viewReceipt(path) {
+            const { data, error } = await db.storage.from('receipts').createSignedUrl(path, 60 * 5);
+            if (error) { alert('Could not open the receipt: ' + error.message); return; }
+            window.open(data.signedUrl, '_blank');
+        }
+
         function populateMethodSelects() {
             const methodSelect = document.getElementById('method');
             methodSelect.innerHTML = Object.keys(ACCOUNT_STANDARDS).map(m =>
@@ -381,7 +493,7 @@
             populateMethodSelects();
             toggleMethodFields(); 
             updateTransferDestinations();
-            renderTable();
+            loadAllData();
         });
 
         function generateAccountOptionsHtml(methodStr, selectedValue = "") {
@@ -475,12 +587,25 @@
             renderBalanceRows(custodian);
         }
 
-        function saveInitialBalances(event) {
+        async function saveInitialBalances(event) {
             event.preventDefault();
             saveCurrentRowState('Gabriel');
             saveCurrentRowState('Jefferson');
-            closeInitialBalanceModal();
-            renderTable();
+
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Saving...';
+            try {
+                await persistInitialBalances();
+                closeInitialBalanceModal();
+                await loadAllData();
+            } catch (err) {
+                console.error('saveInitialBalances error:', err);
+                alert('Could not save initial balances: ' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Save Initial Balances';
+            }
         }
 
         /* --- TRANSFER LOGIC --- */
@@ -531,7 +656,7 @@
             document.getElementById('transferAmount').value = max > 0 ? max.toFixed(2) : 0;
         }
 
-        function addTransfer(event) {
+        async function addTransfer(event) {
             event.preventDefault();
             const sender = document.getElementById('transferSender').value;
             const requestedAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
@@ -542,9 +667,9 @@
 
             const method = document.getElementById('transferMethod').value;
             const account = document.getElementById('transferAccount').value;
+            const submitBtn = event.target.querySelector('button[type="submit"]');
 
             const record = {
-                id: Date.now(),
                 type: 'transfer',
                 date: document.getElementById('transferDate').value,
                 sender: sender,
@@ -555,10 +680,20 @@
                 notes: document.getElementById('transferNotes').value.trim(),
                 ves: 0
             };
-            
-            paymentRecords.unshift(record);
-            renderTable();
-            closeTransferModal();
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Saving...';
+            try {
+                await insertRecord(record);
+                closeTransferModal();
+                await loadAllData();
+            } catch (err) {
+                console.error('addTransfer error:', err);
+                alert('Could not save the transfer: ' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Save Transfer';
+            }
         }
 
         /* --- PAYMENT REGISTRATION LOGIC --- */
@@ -614,14 +749,15 @@
             toggleMethodFields();
         }
 
-        function addPayment(event) {
+        async function addPayment(event) {
             event.preventDefault();
             const method = document.getElementById('method').value;
             const accounts = ACCOUNT_STANDARDS[method] || [];
             const destination = accounts.length > 0 ? document.getElementById('destinationAccount').value : 'Physical Cash';
+            const fileInput = document.getElementById('receipt');
+            const submitBtn = event.target.querySelector('button[type="submit"]');
 
             const record = {
-                id: Date.now(),
                 type: 'payment',
                 date: document.getElementById('date').value,
                 client: document.getElementById('client').value,
@@ -631,9 +767,23 @@
                 usd: parseFloat(document.getElementById('usd').value) || 0,
                 ves: parseFloat(document.getElementById('ves').value) || 0
             };
-            paymentRecords.unshift(record);
-            renderTable();
-            closeModal();
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Saving...';
+            try {
+                if (fileInput.files.length > 0) {
+                    record.receipt_url = await uploadReceipt(fileInput.files[0]);
+                }
+                await insertRecord(record);
+                closeModal();
+                await loadAllData();
+            } catch (err) {
+                console.error('addPayment error:', err);
+                alert('Could not save the payment: ' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Save Record';
+            }
         }
 
         /* --- RENDER & CHART LOGIC --- */
@@ -712,7 +862,10 @@
                                 </span>
                             </td>
                             <td class="p-4 text-right font-bold text-slate-900 align-top">$${p.usd.toFixed(2)}</td>
-                            <td class="p-4 text-center text-slate-400 hover:text-slate-600 cursor-pointer align-top"><i class="fa-solid fa-ellipsis"></i></td>
+                            <td class="p-4 text-center align-top">
+                                ${p.receiptPath ? `<button onclick="viewReceipt('${p.receiptPath}')" title="View receipt" class="text-slate-400 hover:text-blue-600 cursor-pointer mr-3"><i class="fa-solid fa-paperclip"></i></button>` : ''}
+                                <i class="fa-solid fa-ellipsis text-slate-400 hover:text-slate-600 cursor-pointer"></i>
+                            </td>
                         </tr>
                     `;
                 }
