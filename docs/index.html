@@ -134,6 +134,33 @@
             </div>
         </section>
 
+        <section class="glass-card rounded-2xl p-6 shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-money-bill-wave text-emerald-600"></i> VES Balance by Bank
+                </h2>
+                <span class="text-xs text-slate-400">Not converted to USD yet — separate from Funds Distribution above</span>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-blue-50/40 rounded-xl p-4 border border-blue-100 h-full flex flex-col">
+                    <div class="flex justify-between items-center pb-2 border-b border-blue-100 mb-3">
+                        <span class="font-bold text-slate-800 text-sm flex items-center gap-2"><i class="fa-solid fa-user text-blue-600"></i> Gabriel</span>
+                        <span class="font-bold text-blue-700 font-mono text-base" id="ves-breakdown-gabriel-total">Bs 0.00</span>
+                    </div>
+                    <div id="ves-breakdown-gabriel-items" class="space-y-2 text-xs flex-1"></div>
+                </div>
+
+                <div class="bg-indigo-50/40 rounded-xl p-4 border border-indigo-100 h-full flex flex-col">
+                    <div class="flex justify-between items-center pb-2 border-b border-indigo-100 mb-3">
+                        <span class="font-bold text-slate-800 text-sm flex items-center gap-2"><i class="fa-solid fa-user text-indigo-600"></i> Jefferson</span>
+                        <span class="font-bold text-indigo-700 font-mono text-base" id="ves-breakdown-jefferson-total">Bs 0.00</span>
+                    </div>
+                    <div id="ves-breakdown-jefferson-items" class="space-y-2 text-xs flex-1"></div>
+                </div>
+            </div>
+        </section>
+
         <!-- Data Table -->
         <main class="glass-card rounded-2xl p-6 shadow-sm border border-slate-200">
             <div class="overflow-x-auto custom-scrollbar pb-2">
@@ -360,7 +387,7 @@
                             <input type="number" step="0.01" id="transferAmount" required oninput="updateDestPreview()" class="flex-1 px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-700 font-bold font-mono bg-white" value="0">
                             <button type="button" id="transferMaxBtn" onclick="setMaxTransfer()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-lg transition-colors" title="Load the sender's total available USD funds">MAX</button>
                         </div>
-                        <p id="transferMaxHint" class="text-[10px] text-slate-500 mt-1">Click MAX to load the sender's total available funds (across all their accounts), safely without going negative.</p>
+                        <p id="transferMaxHint" class="text-[10px] text-slate-500 mt-1">Click MAX to load what's actually available in this specific source account, safely without going negative.</p>
                     </div>
                 </div>
 
@@ -723,7 +750,7 @@
                             </select>
                         </div>
                         <div class="w-1/4">
-                            <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1">Amount ($)</label>
+                            <label class="text-[10px] uppercase font-bold text-slate-400 block mb-1 amount-label">${isVesMethod(item.method) ? 'Amount (Bs)' : 'Amount ($)'}</label>
                             <input type="number" step="0.01" value="${item.amount}" class="amount-input w-full px-2 py-1.5 border border-slate-200 rounded text-xs font-mono font-bold">
                         </div>
                         <div class="w-1/12 flex justify-center items-end pb-1">
@@ -741,6 +768,7 @@
             const methodSelect = row.querySelector('.method-select');
             const destSelect = row.querySelector('.dest-select');
             destSelect.innerHTML = generateAccountOptionsHtml(methodSelect.value);
+            row.querySelector('.amount-label').innerText = isVesMethod(methodSelect.value) ? 'Amount (Bs)' : 'Amount ($)';
             saveCurrentRowState(custodian); 
         }
 
@@ -870,36 +898,44 @@
             }
         }
 
-        function getCustodianTotal(custodian) {
-            let total = 0;
-            initialBalances[custodian].forEach(item => total += item.amount);
-            paymentRecords.forEach(p => {
-                if (p.type === 'transfer') {
-                    if (p.sender === custodian) total -= p.usd;
-                    if (p.receiver === custodian) total += (p.destUsd !== null ? p.destUsd : p.usd);
-                } else {
-                    if (p.custodian === custodian) total += p.usd;
-                }
-            });
-            return Math.max(0, total);
-        }
-
         function setMaxTransfer() {
             const sender = document.getElementById('transferSender').value;
-            const max = getCustodianTotal(sender);
-            document.getElementById('transferAmount').value = max > 0 ? max.toFixed(2) : 0;
-            updateDestPreview();
+            const sourceMethod = document.getElementById('transferSourceMethod').value;
+            const sourceAccount = document.getElementById('transferSourceAccount').value;
+
+            if (isVesMethod(sourceMethod)) {
+                const maxVes = computeVesBucketBalance(sender, sourceMethod, sourceAccount);
+                document.getElementById('transferVes').value = maxVes > 0 ? maxVes.toFixed(2) : 0;
+                calculateTransferSourceUsd();
+            } else {
+                const maxUsd = computeUsdBucketBalance(sender, sourceMethod, sourceAccount);
+                document.getElementById('transferAmount').value = maxUsd > 0 ? maxUsd.toFixed(2) : 0;
+                updateDestPreview();
+            }
         }
 
         async function addTransfer(event) {
             event.preventDefault();
             const sender = document.getElementById('transferSender').value;
             const sourceMethod = document.getElementById('transferSourceMethod').value;
-            const requestedAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
-            const senderAvailable = getCustodianTotal(sender);
+            const sourceAccount = document.getElementById('transferSourceAccount').value;
 
-            // Robust balance enforcement: Never allow transfer greater than available balance to prevent negative accounts
-            const finalSourceAmount = Math.min(requestedAmount, senderAvailable);
+            // Robust balance enforcement: cap against the SPECIFIC source
+            // account's real balance (in whichever currency it actually holds),
+            // not the sender's blended grand total — that's what let a single
+            // account go negative while the overall total still looked fine.
+            let finalSourceAmount, finalVes = 0;
+            if (isVesMethod(sourceMethod)) {
+                const requestedVes = parseFloat(document.getElementById('transferVes').value) || 0;
+                const availableVes = computeVesBucketBalance(sender, sourceMethod, sourceAccount);
+                finalVes = Math.min(requestedVes, availableVes);
+                const rate = parseFloat(document.getElementById('transferRate').value) || 1;
+                finalSourceAmount = finalVes / rate;
+            } else {
+                const requestedAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
+                const availableUsd = computeUsdBucketBalance(sender, sourceMethod, sourceAccount);
+                finalSourceAmount = Math.min(requestedAmount, availableUsd);
+            }
 
             const exchangeFactor = parseFloat(document.getElementById('transferExchangeFactor').value) || 1;
             const destAmount = finalSourceAmount * exchangeFactor;
@@ -914,7 +950,7 @@
                 sender: sender,
                 receiver: document.getElementById('transferReceiver').value,
                 method: sourceMethod,
-                account: document.getElementById('transferSourceAccount').value,
+                account: sourceAccount,
                 dest_method: destMethod,
                 dest_account: destAccount,
                 usd: finalSourceAmount,
@@ -924,13 +960,13 @@
                 ves: 0
             };
 
-            if (sourceMethod === 'Mobile Payment' || sourceMethod === 'National Transfer') {
-                record.ves = parseFloat(document.getElementById('transferVes').value) || 0;
+            if (isVesMethod(sourceMethod)) {
+                record.ves = finalVes;
                 record.rate = parseFloat(document.getElementById('transferRate').value) || 0;
                 record.rate_currency = document.getElementById('transferRateCurrency').value;
             }
 
-            if (destMethod === 'Mobile Payment' || destMethod === 'National Transfer') {
+            if (isVesMethod(destMethod)) {
                 record.dest_rate = parseFloat(document.getElementById('transferDestRate').value) || 0;
                 record.dest_rate_currency = document.getElementById('transferDestRateCurrency').value;
                 record.dest_ves = destAmount * record.dest_rate;
@@ -1049,6 +1085,51 @@
         }
 
         /* --- RENDER & CHART LOGIC --- */
+        function isVesMethod(method) {
+            return method === 'Mobile Payment' || method === 'National Transfer';
+        }
+
+        // Balance of ONE specific (custodian, method, account) bucket, in USD.
+        // Used by the transfer form so the safety cap checks the actual
+        // account being drained, not the custodian's blended grand total.
+        function computeUsdBucketBalance(custodian, method, account) {
+            if (isVesMethod(method)) return 0; // VES methods live in the Bs pool, not USD
+            let total = 0;
+            initialBalances[custodian].forEach(item => {
+                if (item.method === method && item.destination === account) total += item.amount;
+            });
+            paymentRecords.forEach(p => {
+                if (p.type === 'transfer') {
+                    const destAmount = p.destUsd !== null ? p.destUsd : p.usd;
+                    if (!isVesMethod(p.method) && p.sender === custodian && p.method === method && p.account === account) total -= p.usd;
+                    const dMethod = p.destMethod || p.method;
+                    const dAccount = p.destAccount || p.account;
+                    if (!isVesMethod(dMethod) && p.receiver === custodian && dMethod === method && dAccount === account) total += destAmount;
+                } else if (!isVesMethod(p.method) && p.custodian === custodian && p.method === method && p.destination === account) {
+                    total += p.usd;
+                }
+            });
+            return Math.max(0, total);
+        }
+
+        // Same idea, but for a VES bucket's balance in Bs.
+        function computeVesBucketBalance(custodian, method, account) {
+            if (!isVesMethod(method)) return 0;
+            let total = 0;
+            initialBalances[custodian].forEach(item => {
+                if (item.method === method && item.destination === account) total += item.amount;
+            });
+            paymentRecords.forEach(p => {
+                if (p.type === 'transfer') {
+                    if (isVesMethod(p.method) && p.sender === custodian && p.method === method && p.account === account) total -= p.ves;
+                    if (isVesMethod(p.destMethod) && p.receiver === custodian && p.destMethod === method && p.destAccount === account) total += (p.destVes || 0);
+                } else if (isVesMethod(p.method) && p.custodian === custodian && p.method === method && p.destination === account) {
+                    total += p.ves;
+                }
+            });
+            return Math.max(0, total);
+        }
+
         function renderTable() {
             const tbody = document.getElementById('paymentTableBody');
             tbody.innerHTML = '';
@@ -1056,10 +1137,13 @@
             let gabrielBreakdown = {};
             let jeffersonBreakdown = {};
             let globalBreakdown = {}; 
+            let gabrielVesBreakdown = {};
+            let jeffersonVesBreakdown = {};
             
             let totalGabrielUsd = 0;
             let totalJeffersonUsd = 0;
-            let totalVes = 0;
+            let totalGabrielVes = 0;
+            let totalJeffersonVes = 0;
 
             const addToBreakdown = (custodian, method, dest, amount) => {
                 const label = `${method} (${dest})`;
@@ -1073,25 +1157,43 @@
                 globalBreakdown[label] = (globalBreakdown[label] || 0) + amount;
             };
 
-            // 1. Initials
-            initialBalances.Gabriel.forEach(item => addToBreakdown('Gabriel', item.method, item.destination, item.amount));
-            initialBalances.Jefferson.forEach(item => addToBreakdown('Jefferson', item.method, item.destination, item.amount));
+            // Separate ledger for Bs — money sitting in a VES account isn't
+            // "USD we have" yet, it's Bs that still needs to be exchanged
+            // (at a cost). It only becomes part of the USD pool once an
+            // Exchange transaction actually converts it.
+            const addToVesBreakdown = (custodian, method, dest, amount) => {
+                const label = `${method} (${dest})`;
+                if (custodian === 'Gabriel') {
+                    gabrielVesBreakdown[label] = (gabrielVesBreakdown[label] || 0) + amount;
+                    totalGabrielVes += amount;
+                } else {
+                    jeffersonVesBreakdown[label] = (jeffersonVesBreakdown[label] || 0) + amount;
+                    totalJeffersonVes += amount;
+                }
+            };
+
+            // 1. Initials — routed to the USD or VES pool depending on the method
+            [['Gabriel', initialBalances.Gabriel], ['Jefferson', initialBalances.Jefferson]].forEach(([custodian, rows]) => {
+                rows.forEach(item => {
+                    if (isVesMethod(item.method)) addToVesBreakdown(custodian, item.method, item.destination, item.amount);
+                    else addToBreakdown(custodian, item.method, item.destination, item.amount);
+                });
+            });
 
             // 2. Records (Payments & Transfers)
             paymentRecords.forEach(p => {
                 if(p.type === 'transfer') {
                     const destAmount = p.destUsd !== null ? p.destUsd : p.usd;
-                    // Exchange/transfer: subtract source amount from sender's source bucket,
-                    // add destination amount (may differ if a fee/exchange factor was applied)
-                    // to receiver's destination bucket.
-                    addToBreakdown(p.sender, p.method, p.account, -p.usd);
-                    addToBreakdown(p.receiver, p.destMethod || p.method, p.destAccount || p.account, destAmount);
+                    const sourceIsVes = isVesMethod(p.method);
+                    const destIsVes = isVesMethod(p.destMethod || p.method);
 
-                    // Bs balance: money leaving via a VES channel comes OUT of the VES
-                    // pool; money arriving via a VES channel goes INTO it. Net effect,
-                    // not just an ever-growing "total ever collected" counter.
-                    if (p.method === 'Mobile Payment' || p.method === 'National Transfer') totalVes -= p.ves;
-                    if (p.destMethod === 'Mobile Payment' || p.destMethod === 'National Transfer') totalVes += (p.destVes || 0);
+                    // USD pool: only touched by the legs that are actually USD.
+                    if (!sourceIsVes) addToBreakdown(p.sender, p.method, p.account, -p.usd);
+                    if (!destIsVes) addToBreakdown(p.receiver, p.destMethod || p.method, p.destAccount || p.account, destAmount);
+
+                    // VES pool: only touched by the legs that are actually Bs.
+                    if (sourceIsVes) addToVesBreakdown(p.sender, p.method, p.account, -p.ves);
+                    if (destIsVes) addToVesBreakdown(p.receiver, p.destMethod, p.destAccount, p.destVes || 0);
 
                     const sameChannel = (p.destMethod || p.method) === p.method && (p.destAccount || p.account) === p.account;
                     const channelHtml = sameChannel
@@ -1128,9 +1230,13 @@
                         </tr>
                     `;
                 } else {
-                    // Standard Payment
-                    totalVes += p.ves;
-                    addToBreakdown(p.custodian, p.method, p.destination, p.usd);
+                    // Standard Payment: goes to the VES pool if it's a Bs method,
+                    // otherwise it's already real USD and goes to the USD pool.
+                    if (isVesMethod(p.method)) {
+                        addToVesBreakdown(p.custodian, p.method, p.destination, p.ves);
+                    } else {
+                        addToBreakdown(p.custodian, p.method, p.destination, p.usd);
+                    }
 
                     const rateCell = p.rate ? `<span class="text-[11px] font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 whitespace-nowrap">${p.rate} Bs/${p.rateCurrency === 'EUR' ? '€' : '$'}</span>` : `<span class="text-slate-300 text-xs">—</span>`;
 
@@ -1163,21 +1269,47 @@
             // Prevent precision floating point bugs or display guards ensuring no negative balances are shown
             totalGabrielUsd = Math.max(0, totalGabrielUsd);
             totalJeffersonUsd = Math.max(0, totalJeffersonUsd);
+            if (Math.abs(totalGabrielVes) < 0.005) totalGabrielVes = 0;
+            if (Math.abs(totalJeffersonVes) < 0.005) totalJeffersonVes = 0;
 
             // Update KPI
             const grandTotalUsd = totalGabrielUsd + totalJeffersonUsd;
+            const grandTotalVes = totalGabrielVes + totalJeffersonVes;
             document.getElementById('kpi-usd').innerText = `$${grandTotalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            if (Math.abs(totalVes) < 0.005) totalVes = 0; // avoid a rounding artifact displaying as "-0.00"
-            document.getElementById('kpi-ves').innerText = `Bs ${totalVes.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('kpi-ves').innerText = `Bs ${grandTotalVes.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('kpi-gabriel').innerText = `$${totalGabrielUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('kpi-jefferson').innerText = `$${totalJeffersonUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
             // Breakdowns & Dynamic Chart Updates
             renderBreakdownList('gabriel', gabrielBreakdown, totalGabrielUsd);
             renderBreakdownList('jefferson', jeffersonBreakdown, totalJeffersonUsd);
+            renderVesBreakdownList('gabriel', gabrielVesBreakdown, totalGabrielVes);
+            renderVesBreakdownList('jefferson', jeffersonVesBreakdown, totalJeffersonVes);
             document.getElementById('chart-center-total').innerText = `$${grandTotalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
             updateChart(globalBreakdown);
+        }
+
+        function renderVesBreakdownList(custodianKey, breakdownObj, total) {
+            const container = document.getElementById(`ves-breakdown-${custodianKey}-items`);
+            document.getElementById(`ves-breakdown-${custodianKey}-total`).innerText = `Bs ${total.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            container.innerHTML = '';
+
+            const keys = Object.keys(breakdownObj);
+            let hasData = false;
+            keys.forEach(key => {
+                const val = Math.max(0, breakdownObj[key]);
+                if (val > 0.005) {
+                    hasData = true;
+                    container.innerHTML += `
+                        <div class="flex justify-between items-center py-1 border-b border-slate-100 last:border-0">
+                            <span class="font-medium text-slate-600 truncate mr-2" title="${key}">${key}</span>
+                            <span class="font-bold text-slate-800 font-mono">Bs ${val.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        </div>
+                    `;
+                }
+            });
+            if (!hasData) container.innerHTML = '<p class="text-slate-400 text-xs italic">No Bs balance yet.</p>';
         }
 
         function renderBreakdownList(custodianKey, breakdownObj, total) {
