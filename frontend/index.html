@@ -144,6 +144,7 @@
                             <th class="p-4">Client / Type</th>
                             <th class="p-4">Methods & Accounts</th>
                             <th class="p-4">Rate</th>
+                            <th class="p-4 text-right">Bs (VES)</th>
                             <th class="p-4">Custodians</th>
                             <th class="p-4">Notes</th>
                             <th class="p-4 text-right">Amount (USD)</th>
@@ -291,7 +292,7 @@
     <div id="transferModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-slate-200 custom-scrollbar">
             <div class="bg-slate-50 px-6 py-4 flex justify-between items-center border-b border-slate-100 sticky top-0 z-10">
-                <h3 class="text-lg font-bold text-slate-800">Register Internal Transfer Between Custodians</h3>
+                <h3 class="text-lg font-bold text-slate-800">Register Internal Transfer / Exchange</h3>
                 <button onclick="closeTransferModal()" class="text-slate-400 hover:text-rose-500 transition-colors">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
@@ -317,38 +318,83 @@
                             <option value="Gabriel">Gabriel</option>
                             <option value="Jefferson">Jefferson</option>
                         </select>
+                        <p class="text-[10px] text-slate-400 mt-1">Same person on both sides = you're just converting currency/channel, not moving money to someone else.</p>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Transfer Method / Channel</label>
-                        <select id="transferMethod" onchange="updateTransferDestinations()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm">
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Account Destination</label>
-                        <select id="transferAccount" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm"></select>
-                    </div>
-                </div>
-
-                <!-- Amount and Notes -->
-                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Transfer Amount (USD)</label>
-                        <div class="flex gap-2">
-                            <input type="number" step="0.01" id="transferAmount" required class="flex-1 px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-700 font-bold font-mono bg-white" value="0">
-                            <button type="button" onclick="setMaxTransfer()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-lg transition-colors" title="Load maximum available total for the Sender">
-                                MAX
-                            </button>
+                <!-- SOURCE: what leaves the sender -->
+                <div class="bg-rose-50/50 border border-rose-100 rounded-xl p-4 space-y-4">
+                    <p class="text-xs font-bold text-rose-700 uppercase tracking-wider">Source — what's leaving</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Source Method / Channel</label>
+                            <select id="transferSourceMethod" onchange="toggleTransferSourceFields()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm"></select>
                         </div>
-                        <p class="text-[10px] text-slate-500 mt-1">Click MAX to load the sender's total available funds safely without going negative.</p>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Source Account</label>
+                            <select id="transferSourceAccount" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm"></select>
+                        </div>
+                    </div>
+
+                    <!-- Shown only when the source method is VES (Mobile Payment / National Transfer) -->
+                    <div id="transferVesFields" class="hidden grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Amount (VES)</label>
+                            <input type="number" step="0.01" id="transferVes" oninput="calculateTransferSourceUsd()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Exchange Rate</label>
+                            <div class="flex">
+                                <input type="number" step="0.01" id="transferRate" oninput="calculateTransferSourceUsd()" class="w-full px-3 py-2.5 border border-slate-200 border-r-0 rounded-l-lg text-sm font-mono" value="36.50">
+                                <select id="transferRateCurrency" class="w-24 px-2 py-2.5 border border-slate-200 rounded-r-lg text-sm bg-slate-50">
+                                    <option value="USD">Bs/$</option>
+                                    <option value="EUR">Bs/€</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Notes / Reason for Transfer</label>
-                        <textarea id="transferNotes" rows="2" placeholder="e.g. Moved funds to cover digital supplier payments via Binance" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-slate-500"></textarea>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1" id="transferSourceAmountLabel">Source Amount (USD)</label>
+                        <div class="flex gap-2">
+                            <input type="number" step="0.01" id="transferAmount" required oninput="updateDestPreview()" class="flex-1 px-3 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-700 font-bold font-mono bg-white" value="0">
+                            <button type="button" id="transferMaxBtn" onclick="setMaxTransfer()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-lg transition-colors" title="Load the sender's total available USD funds">MAX</button>
+                        </div>
+                        <p id="transferMaxHint" class="text-[10px] text-slate-500 mt-1">Click MAX to load the sender's total available funds (across all their accounts), safely without going negative.</p>
                     </div>
+                </div>
+
+                <!-- DESTINATION: what the receiver gets, possibly a different channel/currency -->
+                <div class="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 space-y-4">
+                    <p class="text-xs font-bold text-emerald-700 uppercase tracking-wider">Destination — what's arriving</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Destination Method / Channel</label>
+                            <select id="transferDestMethod" onchange="updateTransferDestinations()" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm"></select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Destination Account</label>
+                            <select id="transferDestAccount" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm"></select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Exchange Factor</label>
+                            <input type="number" step="0.0001" id="transferExchangeFactor" oninput="updateDestPreview()" value="1.00" class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm font-mono">
+                            <p class="text-[10px] text-slate-500 mt-1">1.00 = no fee. E.g. 0.95 for a 5% fee converting Zelle → USDT.</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Destination Amount (USD)</label>
+                            <input type="text" id="transferDestPreview" readonly class="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-700 font-bold font-mono">
+                            <p class="text-[10px] text-slate-500 mt-1">Source Amount × Exchange Factor — this is what actually lands in the destination account.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Notes / Reason for Transfer</label>
+                    <textarea id="transferNotes" rows="2" placeholder="e.g. Converted Zelle to USDT via Binance P2P, 5% fee" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-slate-500"></textarea>
                 </div>
 
                 <div class="pt-4 flex justify-end gap-3 mt-6">
@@ -402,9 +448,8 @@
             "National Transfer": "National Transfer (VES)"
         };
 
-        // Only these methods represent USD custody buckets that can be moved
-        // between Gabriel and Jefferson internally (VES methods aren't transferable here).
-        const TRANSFERABLE_METHODS = ["Zelle", "Binance USDT", "Cash USD", "National USD Account"];
+        // Every method can now be used as a transfer source or destination —
+        // Internal Transfer doubles as a currency/channel exchange tool.
 
         let initialBalances = { Gabriel: [], Jefferson: [] };
         let paymentRecords = [];
@@ -450,6 +495,10 @@
                     sender: row.sender,
                     receiver: row.receiver,
                     account: row.account,
+                    destMethod: row.dest_method,
+                    destAccount: row.dest_account,
+                    destUsd: row.dest_usd !== null && row.dest_usd !== undefined ? parseFloat(row.dest_usd) : null,
+                    exchangeFactor: row.exchange_factor ? parseFloat(row.exchange_factor) : null,
                     notes: row.notes,
                     usd: parseFloat(row.usd) || 0,
                     ves: parseFloat(row.ves) || 0,
@@ -472,7 +521,8 @@
                 renderTable();
             } catch (err) {
                 console.error('loadAllData error:', err);
-                setSyncStatus('error', 'Could not reach the database — showing empty state');
+                const detail = err.message ? ` (${err.message})` : '';
+                setSyncStatus('error', `Could not reach the database${detail} — <button onclick="loadAllData()" class="underline">Retry</button>`);
             }
         }
 
@@ -522,10 +572,14 @@
                 `<option value="${m}">${METHOD_LABELS[m] || m}</option>`
             ).join('');
 
-            const transferMethodSelect = document.getElementById('transferMethod');
-            transferMethodSelect.innerHTML = TRANSFERABLE_METHODS.map(m =>
+            // Transfers now support ALL methods on both sides (including VES),
+            // since this doubles as a currency/channel exchange, not just a
+            // same-channel move.
+            const allMethodsHtml = Object.keys(ACCOUNT_STANDARDS).map(m =>
                 `<option value="${m}">${METHOD_LABELS[m] || m}</option>`
             ).join('');
+            document.getElementById('transferSourceMethod').innerHTML = allMethodsHtml;
+            document.getElementById('transferDestMethod').innerHTML = allMethodsHtml;
         }
 
         // Runs once, after a valid session is confirmed (fresh login or existing session).
@@ -534,6 +588,7 @@
             document.getElementById('transferDate').valueAsDate = new Date();
             populateMethodSelects();
             toggleMethodFields();
+            toggleTransferSourceFields();
             updateTransferDestinations();
             loadAllData();
         }
@@ -696,19 +751,75 @@
         /* --- TRANSFER LOGIC --- */
         function openTransferModal() {
             document.getElementById('transferModal').classList.remove('hidden');
+            toggleTransferSourceFields();
+            updateTransferDestinations();
         }
 
         function closeTransferModal() {
             document.getElementById('transferModal').classList.add('hidden');
             document.getElementById('transferForm').reset();
             document.getElementById('transferDate').valueAsDate = new Date();
+            toggleTransferSourceFields();
             updateTransferDestinations();
         }
 
+        // Mirrors toggleMethodFields() from the Payment form: if the source
+        // channel is VES (Mobile Payment / National Transfer), collect
+        // Amount(VES) + Rate instead of a plain USD number.
+        function toggleTransferSourceFields() {
+            const method = document.getElementById('transferSourceMethod').value;
+            const accounts = ACCOUNT_STANDARDS[method] || [];
+            document.getElementById('transferSourceAccount').innerHTML = generateAccountOptionsHtml(method);
+
+            const vesFields = document.getElementById('transferVesFields');
+            const amountInput = document.getElementById('transferAmount');
+            const amountLabel = document.getElementById('transferSourceAmountLabel');
+            const maxBtn = document.getElementById('transferMaxBtn');
+            const maxHint = document.getElementById('transferMaxHint');
+
+            if (method === 'Mobile Payment' || method === 'National Transfer') {
+                vesFields.classList.remove('hidden');
+                vesFields.classList.add('grid');
+                amountInput.readOnly = true;
+                amountInput.classList.add('bg-slate-100');
+                amountLabel.innerText = 'Source Amount (USD) — calculated from VES';
+                maxBtn.classList.add('hidden');
+                maxHint.classList.add('hidden');
+                calculateTransferSourceUsd();
+            } else {
+                vesFields.classList.add('hidden');
+                vesFields.classList.remove('grid');
+                amountInput.readOnly = false;
+                amountInput.classList.remove('bg-slate-100');
+                amountLabel.innerText = 'Source Amount (USD)';
+                maxBtn.classList.remove('hidden');
+                maxHint.classList.remove('hidden');
+            }
+
+            // Cash-style methods (no accounts) don't need an account selector visible either,
+            // but we leave the (empty) select in place since it's simplest and harmless.
+            updateDestPreview();
+        }
+
+        function calculateTransferSourceUsd() {
+            const ves = parseFloat(document.getElementById('transferVes').value) || 0;
+            const rate = parseFloat(document.getElementById('transferRate').value) || 1;
+            document.getElementById('transferAmount').value = (ves / rate).toFixed(2);
+            updateDestPreview();
+        }
+
         function updateTransferDestinations() {
-            const method = document.getElementById('transferMethod').value;
-            const destSelect = document.getElementById('transferAccount');
-            destSelect.innerHTML = generateAccountOptionsHtml(method);
+            const method = document.getElementById('transferDestMethod').value;
+            document.getElementById('transferDestAccount').innerHTML = generateAccountOptionsHtml(method);
+        }
+
+        // Destination Amount = Source Amount x Exchange Factor. This is what
+        // actually shows up in the destination bucket — e.g. converting $100
+        // Zelle at a 0.95 factor lands as $95 in the destination USDT wallet.
+        function updateDestPreview() {
+            const sourceUsd = parseFloat(document.getElementById('transferAmount').value) || 0;
+            const factor = parseFloat(document.getElementById('transferExchangeFactor').value) || 0;
+            document.getElementById('transferDestPreview').value = '$' + (sourceUsd * factor).toFixed(2);
         }
 
         function autoSwitchReceiver() {
@@ -727,7 +838,7 @@
             paymentRecords.forEach(p => {
                 if (p.type === 'transfer') {
                     if (p.sender === custodian) total -= p.usd;
-                    if (p.receiver === custodian) total += p.usd;
+                    if (p.receiver === custodian) total += (p.destUsd !== null ? p.destUsd : p.usd);
                 } else {
                     if (p.custodian === custodian) total += p.usd;
                 }
@@ -739,19 +850,24 @@
             const sender = document.getElementById('transferSender').value;
             const max = getCustodianTotal(sender);
             document.getElementById('transferAmount').value = max > 0 ? max.toFixed(2) : 0;
+            updateDestPreview();
         }
 
         async function addTransfer(event) {
             event.preventDefault();
             const sender = document.getElementById('transferSender').value;
+            const sourceMethod = document.getElementById('transferSourceMethod').value;
             const requestedAmount = parseFloat(document.getElementById('transferAmount').value) || 0;
             const senderAvailable = getCustodianTotal(sender);
 
             // Robust balance enforcement: Never allow transfer greater than available balance to prevent negative accounts
-            const finalAmount = Math.min(requestedAmount, senderAvailable);
+            const finalSourceAmount = Math.min(requestedAmount, senderAvailable);
 
-            const method = document.getElementById('transferMethod').value;
-            const account = document.getElementById('transferAccount').value;
+            const exchangeFactor = parseFloat(document.getElementById('transferExchangeFactor').value) || 1;
+            const destAmount = finalSourceAmount * exchangeFactor;
+
+            const destMethod = document.getElementById('transferDestMethod').value;
+            const destAccount = document.getElementById('transferDestAccount').value;
             const submitBtn = event.target.querySelector('button[type="submit"]');
 
             const record = {
@@ -759,12 +875,22 @@
                 date: document.getElementById('transferDate').value,
                 sender: sender,
                 receiver: document.getElementById('transferReceiver').value,
-                method: method,
-                account: account,
-                usd: finalAmount,
+                method: sourceMethod,
+                account: document.getElementById('transferSourceAccount').value,
+                dest_method: destMethod,
+                dest_account: destAccount,
+                usd: finalSourceAmount,
+                dest_usd: destAmount,
+                exchange_factor: exchangeFactor,
                 notes: document.getElementById('transferNotes').value.trim(),
                 ves: 0
             };
+
+            if (sourceMethod === 'Mobile Payment' || sourceMethod === 'National Transfer') {
+                record.ves = parseFloat(document.getElementById('transferVes').value) || 0;
+                record.rate = parseFloat(document.getElementById('transferRate').value) || 0;
+                record.rate_currency = document.getElementById('transferRateCurrency').value;
+            }
 
             submitBtn.disabled = true;
             submitBtn.innerText = 'Saving...';
@@ -910,27 +1036,39 @@
             // 2. Records (Payments & Transfers)
             paymentRecords.forEach(p => {
                 if(p.type === 'transfer') {
-                    // Single channel internal transfer: subtract from sender bucket, add to receiver bucket using same method/account
+                    const destAmount = p.destUsd !== null ? p.destUsd : p.usd;
+                    // Exchange/transfer: subtract source amount from sender's source bucket,
+                    // add destination amount (may differ if a fee/exchange factor was applied)
+                    // to receiver's destination bucket.
                     addToBreakdown(p.sender, p.method, p.account, -p.usd);
-                    addToBreakdown(p.receiver, p.method, p.account, p.usd);
+                    addToBreakdown(p.receiver, p.destMethod || p.method, p.destAccount || p.account, destAmount);
+
+                    const sameChannel = (p.destMethod || p.method) === p.method && (p.destAccount || p.account) === p.account;
+                    const channelHtml = sameChannel
+                        ? `<div class="text-sm font-medium text-slate-800">${METHOD_LABELS[p.method] || p.method}</div><div class="text-xs text-slate-500 mt-0.5">${p.account}</div>`
+                        : `<div class="text-sm font-medium text-slate-800">${METHOD_LABELS[p.method] || p.method} <i class="fa-solid fa-arrow-right text-slate-300 mx-1"></i> ${METHOD_LABELS[p.destMethod] || p.destMethod}</div><div class="text-xs text-slate-500 mt-0.5">${p.account} → ${p.destAccount}</div>`;
+
+                    const transferRateCell = p.rate ? `<span class="text-[11px] font-mono bg-slate-50 border border-slate-200 rounded px-2 py-1 whitespace-nowrap">${p.rate} Bs/${p.rateCurrency === 'EUR' ? '€' : '$'}</span>` : `<span class="text-slate-300 text-xs">—</span>`;
+
+                    const amountHtml = Math.abs(destAmount - p.usd) > 0.005
+                        ? `<div class="text-right"><div class="font-bold text-slate-900">$${destAmount.toFixed(2)}</div><div class="text-[10px] text-slate-400">from $${p.usd.toFixed(2)} (×${(p.exchangeFactor || 1).toFixed(4)})</div></div>`
+                        : `$${p.usd.toFixed(2)}`;
 
                     tbody.innerHTML += `
                         <tr class="bg-blue-50/20 border-b border-slate-100">
                             <td class="p-4 text-xs font-mono text-slate-500 align-top">${p.date}</td>
                             <td class="p-4 align-top">
-                                <span class="bg-slate-200 text-slate-700 text-[10px] px-2 py-1 rounded uppercase tracking-wider font-semibold">Internal Transfer</span>
+                                <span class="bg-slate-200 text-slate-700 text-[10px] px-2 py-1 rounded uppercase tracking-wider font-semibold">${sameChannel ? 'Internal Transfer' : 'Exchange'}</span>
                             </td>
-                            <td class="p-4 align-top">
-                                <div class="text-sm font-medium text-slate-800">${METHOD_LABELS[p.method] || p.method}</div>
-                                <div class="text-xs text-slate-500 mt-0.5">${p.account}</div>
-                            </td>
-                            <td class="p-4 align-top text-slate-300 text-xs">—</td>
+                            <td class="p-4 align-top">${channelHtml}</td>
+                            <td class="p-4 align-top">${transferRateCell}</td>
+                            <td class="p-4 align-top text-right text-xs font-mono text-slate-600">${p.ves > 0 ? 'Bs ' + p.ves.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '<span class="text-slate-300">—</span>'}</td>
                             <td class="p-4 align-top">
                                 <div class="text-xs text-rose-600 mb-1">From: <span class="font-semibold">${p.sender}</span></div>
                                 <div class="text-xs font-semibold text-emerald-700">To: ${p.receiver}</div>
                             </td>
                             <td class="p-4 align-top text-xs text-slate-500 max-w-[180px] whitespace-normal">${p.notes || ''}</td>
-                            <td class="p-4 text-right font-bold text-slate-900 align-top">$${p.usd.toFixed(2)}</td>
+                            <td class="p-4 text-right font-bold text-slate-900 align-top">${amountHtml}</td>
                             <td class="p-4 text-center text-slate-400 hover:text-slate-600 cursor-pointer align-top"><i class="fa-solid fa-ellipsis"></i></td>
                         </tr>
                     `;
@@ -950,6 +1088,7 @@
                                 <div class="text-xs text-slate-500 mt-0.5">${p.destination}</div>
                             </td>
                             <td class="p-4 align-top">${rateCell}</td>
+                            <td class="p-4 align-top text-right text-xs font-mono text-slate-600">${p.ves > 0 ? 'Bs ' + p.ves.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '<span class="text-slate-300">—</span>'}</td>
                             <td class="p-4 align-top">
                                 <span class="px-2 py-1 rounded text-xs font-semibold ${p.custodian === 'Gabriel' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-indigo-50 text-indigo-700 border border-indigo-100'}">
                                     ${p.custodian}
