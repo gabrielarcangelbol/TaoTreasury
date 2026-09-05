@@ -1167,6 +1167,7 @@
             // Update KPI
             const grandTotalUsd = totalGabrielUsd + totalJeffersonUsd;
             document.getElementById('kpi-usd').innerText = `$${grandTotalUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            if (Math.abs(totalVes) < 0.005) totalVes = 0; // avoid a rounding artifact displaying as "-0.00"
             document.getElementById('kpi-ves').innerText = `Bs ${totalVes.toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('kpi-gabriel').innerText = `$${totalGabrielUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('kpi-jefferson').innerText = `$${totalJeffersonUsd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
